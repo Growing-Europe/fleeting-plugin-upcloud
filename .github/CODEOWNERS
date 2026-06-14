@@ -1,0 +1,3 @@
+# Default owners for everything in the repo.
+# Required reviews are enforced via branch protection on the default branch.
+*       @Growing-Europe

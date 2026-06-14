@@ -1,0 +1,44 @@
+name: Scorecard
+
+on:
+  branch_protection_rule:
+  schedule:
+    - cron: '20 7 * * 1'  # weekly, Monday 07:20 UTC
+  push:
+    branches: [main]
+
+# Top-level least privilege; the analysis job opts in to what Scorecard needs.
+permissions: read-all
+
+concurrency:
+  group: scorecard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write  # upload SARIF to the code-scanning dashboard
+      id-token: write         # publish results to the OpenSSF API
+      contents: read
+    steps:
+      - uses: step-security/harden-runner@cb605e52c26070c328afc4562f0b4ada7618a84e # v2.10.4
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: ossf/scorecard-action@f49aabe0b5af0936a0987cfb85d86b75731b0186 # v2.4.1
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+      - uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
+        with:
+          name: scorecard-results
+          path: results.sarif
+          retention-days: 5
+      - uses: github/codeql-action/upload-sarif@b6a472f63d85b9c78a3ac5e89422239fc15e9b3c # v3.28.1
+        with:
+          sarif_file: results.sarif
