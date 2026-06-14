@@ -31,6 +31,18 @@ func (g *InstanceGroup) Init(_ context.Context, log hclog.Logger, settings provi
 	g.userData = ud
 	g.scope = g.HostnamePrefix
 
+	// When the runner does not bring its own credentials, generate an ephemeral
+	// SSH key: inject the public half into every server we create and hand the
+	// private half to the connector.
+	if !g.settings.UseStaticCredentials {
+		authKey, privPEM, err := generateSSHKey()
+		if err != nil {
+			return provider.ProviderInfo{}, err
+		}
+		g.SSHKeys = append(g.SSHKeys, authKey)
+		g.settings.Key = privPEM
+	}
+
 	if g.client == nil {
 		c, err := ucloud.New()
 		if err != nil {
