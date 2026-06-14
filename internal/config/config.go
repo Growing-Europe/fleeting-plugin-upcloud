@@ -18,33 +18,36 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
-// Config is the plugin_config block for fleeting-plugin-upcloud.
+// Config is the plugin_config block for fleeting-plugin-upcloud. Both tag sets
+// are intentional: TOML for the standalone Parse path, JSON for the fleeting
+// plugin protocol (the framework json-unmarshals plugin_config into the
+// embedding InstanceGroup).
 type Config struct {
 	// Placement.
-	Zone         string   `toml:"zone"`
-	Plan         string   `toml:"plan"`
-	Template     string   `toml:"template"`
-	AllowedZones []string `toml:"allowed_zones"`
+	Zone         string   `toml:"zone" json:"zone,omitempty"`
+	Plan         string   `toml:"plan" json:"plan,omitempty"`
+	Template     string   `toml:"template" json:"template,omitempty"`
+	AllowedZones []string `toml:"allowed_zones" json:"allowed_zones,omitempty"`
 
 	// Identity / grouping.
-	HostnamePrefix string            `toml:"hostname_prefix"`
-	Labels         map[string]string `toml:"labels"`
+	HostnamePrefix string            `toml:"hostname_prefix" json:"hostname_prefix,omitempty"`
+	Labels         map[string]string `toml:"labels" json:"labels,omitempty"`
 
 	// Sizing.
-	StorageSizeGB int `toml:"storage_size_gb"`
-	MaxInstances  int `toml:"max_instances"` // 0 = no plugin-side cap (account quota governs)
+	StorageSizeGB int `toml:"storage_size_gb" json:"storage_size_gb,omitempty"`
+	MaxInstances  int `toml:"max_instances" json:"max_instances,omitempty"` // 0 = no plugin-side cap (account quota governs)
 
 	// Networking (at least one reachable path is required).
-	Network        string `toml:"network"` // SDN/private network UUID
-	UtilityNetwork bool   `toml:"utility_network"`
-	PublicIPv4     bool   `toml:"public_ipv4"`
-	PublicIPv6     bool   `toml:"public_ipv6"`
-	FloatingIP     string `toml:"floating_ip"`
+	Network        string `toml:"network" json:"network,omitempty"` // SDN/private network UUID
+	UtilityNetwork bool   `toml:"utility_network" json:"utility_network,omitempty"`
+	PublicIPv4     bool   `toml:"public_ipv4" json:"public_ipv4,omitempty"`
+	PublicIPv6     bool   `toml:"public_ipv6" json:"public_ipv6,omitempty"`
+	FloatingIP     string `toml:"floating_ip" json:"floating_ip,omitempty"`
 
 	// Provisioning.
-	SSHKeys      []string `toml:"ssh_keys"`
-	UserData     string   `toml:"user_data"`
-	UserDataFile string   `toml:"user_data_file"`
+	SSHKeys      []string `toml:"ssh_keys" json:"ssh_keys,omitempty"`
+	UserData     string   `toml:"user_data" json:"user_data,omitempty"`
+	UserDataFile string   `toml:"user_data_file" json:"user_data_file,omitempty"`
 }
 
 // Parse decodes a plugin_config TOML document and validates it. Decoding is

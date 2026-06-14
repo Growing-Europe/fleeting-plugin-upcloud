@@ -21,15 +21,15 @@ func (g *InstanceGroup) Init(_ context.Context, log hclog.Logger, settings provi
 	g.log = log
 	g.settings = settings
 
-	if err := g.Config.Validate(); err != nil {
+	if err := g.Validate(); err != nil {
 		return provider.ProviderInfo{}, err
 	}
-	ud, err := g.Config.ResolveUserData()
+	ud, err := g.ResolveUserData()
 	if err != nil {
 		return provider.ProviderInfo{}, err
 	}
 	g.userData = ud
-	g.scope = g.Config.HostnamePrefix
+	g.scope = g.HostnamePrefix
 
 	if g.client == nil {
 		c, err := ucloud.New()
@@ -41,7 +41,7 @@ func (g *InstanceGroup) Init(_ context.Context, log hclog.Logger, settings provi
 
 	return provider.ProviderInfo{
 		ID:      g.scope,
-		MaxSize: g.Config.MaxInstances,
+		MaxSize: g.MaxInstances,
 		Version: Version,
 	}, nil
 }
@@ -70,14 +70,14 @@ func (g *InstanceGroup) Increase(ctx context.Context, n int) (int, error) {
 		return 0, nil
 	}
 	allowed := n
-	if g.Config.MaxInstances > 0 {
+	if g.MaxInstances > 0 {
 		current, err := g.listOwned(ctx)
 		if err != nil {
 			return 0, fmt.Errorf("increase: capacity check: %w", err)
 		}
-		room := g.Config.MaxInstances - len(current)
+		room := g.MaxInstances - len(current)
 		if room <= 0 {
-			return 0, fmt.Errorf("increase: %w (%d/%d)", ErrAtCapacity, len(current), g.Config.MaxInstances)
+			return 0, fmt.Errorf("increase: %w (%d/%d)", ErrAtCapacity, len(current), g.MaxInstances)
 		}
 		if allowed > room {
 			allowed = room
@@ -158,12 +158,12 @@ func (g *InstanceGroup) buildSpec() ucloud.ServerSpec {
 	return ucloud.ServerSpec{
 		Title:         host,
 		Hostname:      host,
-		Zone:          g.Config.Zone,
-		Plan:          g.Config.Plan,
-		Template:      g.Config.Template,
-		StorageSizeGB: g.Config.StorageSizeGB,
+		Zone:          g.Zone,
+		Plan:          g.Plan,
+		Template:      g.Template,
+		StorageSizeGB: g.StorageSizeGB,
 		Labels:        g.groupLabels(),
-		SSHKeys:       g.Config.SSHKeys,
+		SSHKeys:       g.SSHKeys,
 		UserData:      g.userData,
 	}
 }
