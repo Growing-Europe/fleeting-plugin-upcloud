@@ -45,9 +45,11 @@ type cloud interface {
 	Delete(ctx context.Context, uuid string) error
 }
 
-// InstanceGroup is the fleeting provider.InstanceGroup implementation.
+// InstanceGroup is the fleeting provider.InstanceGroup implementation. It embeds
+// Config so the fleeting framework can json-unmarshal plugin_config directly into
+// it (snake_case keys map to the embedded fields' json tags).
 type InstanceGroup struct {
-	Config config.Config
+	config.Config
 
 	client   cloud
 	log      hclog.Logger
@@ -74,7 +76,7 @@ func randSuffix() string {
 
 func (g *InstanceGroup) groupLabels() map[string]string {
 	labels := map[string]string{groupLabelKey: g.scope}
-	for k, v := range g.Config.Labels {
+	for k, v := range g.Labels {
 		labels[k] = v
 	}
 	return labels

@@ -21,6 +21,9 @@ This plugin MUST run, unmodified, for anyone using GitLab Runner on UpCloud. Enf
 A change that hardcodes a site-specific value is **wrong** — move it behind configuration.
 
 ## Build / verify — run before every commit
+Requires **Go ≥ 1.26** (the `upcloud-go-api` and `fleeting` dependencies set the
+module's minimum). CI builds and scans on the latest stable Go; lint runs
+golangci-lint v2.
 ```sh
 go build ./...
 go vet ./...
@@ -37,8 +40,13 @@ gofmt -l .        # MUST print nothing
 - [ ] Public strings (README, `config.example.toml`) use generic placeholders, never real values.
 
 ## Architecture / contract
-Implement the fleeting provider interface (`fleeting.InstanceGroup`):
-`Init` · `Update` · `Increase` · `Decrease` · `ConnectInfo`.
+Implement the fleeting provider interface (`provider.InstanceGroup`) — the live
+interface is **9 methods**:
+`Init` · `Update` · `Increase` · `Decrease` · `ConnectInfo` · `Heartbeat` ·
+`Suspend` · `Resume` · `Shutdown`.
+`Suspend`/`Resume` are no-ops and the `CapabilitySuspendResume` capability is not
+advertised — these VMs are single-use (`max_use_count = 1`), so the provisioner
+never suspends them. `Heartbeat`/`Shutdown` are no-ops.
 
 The GitLab Runner autoscaler decides **when** to scale. This plugin only creates / lists / deletes
 UpCloud servers and reports their connection info. UpCloud Server API base: `https://api.upcloud.com/1.3`

@@ -26,6 +26,19 @@ the official successor to the deprecated `docker-machine` autoscaler.
 - An UpCloud account and an API token (`ucat_…`).
 - A bootable OS image / storage template for the runner instances.
 
+### Compatibility
+
+| Component        | Supported                                                        |
+| ---------------- | ---------------------------------------------------------------- |
+| Go (to build)    | ≥ 1.26                                                           |
+| fleeting API     | `provider.InstanceGroup` v0 (9-method interface)                |
+| GitLab Runner    | Versions shipping the fleeting Instance/Docker Autoscaler        |
+| UpCloud API      | 1.3 (via the official `upcloud-go-api` v8 SDK, bearer token)     |
+| Platforms        | linux/amd64, linux/arm64 (release binaries)                      |
+
+The UpCloud API token is read from the environment (e.g. `UPCLOUD_TOKEN`), never
+from configuration.
+
 ## Installation
 
 Download a release binary from the [Releases](../../releases) page (or `go install`), then reference it
