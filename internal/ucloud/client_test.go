@@ -66,10 +66,10 @@ func (f *fakeAPI) GetStorages(_ context.Context, r *request.GetStoragesRequest) 
 
 func detailsWith(uuid, state string, labels ...upcloud.Label) *upcloud.ServerDetails {
 	d := &upcloud.ServerDetails{}
-	d.Server.UUID = uuid
-	d.Server.Title = "t-" + uuid
-	d.Server.State = state
-	d.Server.Zone = "zone-x"
+	d.UUID = uuid
+	d.Title = "t-" + uuid
+	d.State = state
+	d.Zone = "zone-x"
 	d.Labels = labels
 	return d
 }
@@ -184,7 +184,7 @@ func TestListByLabel_BuildsFilterAndMaps(t *testing.T) {
 		t.Fatalf("want 1 filter, got %d", len(f.listReq.Filters))
 	}
 	fl, ok := f.listReq.Filters[0].(request.FilterLabel)
-	if !ok || fl.Label.Key != "grp" || fl.Label.Value != "g1" {
+	if !ok || fl.Key != "grp" || fl.Value != "g1" {
 		t.Errorf("bad label filter: %+v", f.listReq.Filters[0])
 	}
 }

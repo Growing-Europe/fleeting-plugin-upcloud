@@ -234,7 +234,7 @@ func TestUpdate_ListErrorPropagates(t *testing.T) {
 func TestConnectInfo(t *testing.T) {
 	f := &fakeCloud{getResult: &ucloud.Server{UUID: "z", ExternalIP: "203.0.113.7", InternalIP: "10.0.0.5"}}
 	g := New(cfg(), f)
-	g.settings.ConnectorConfig.Username = "root"
+	g.settings.Username = "root"
 	info, err := g.ConnectInfo(context.Background(), "z")
 	if err != nil {
 		t.Fatal(err)
