@@ -66,10 +66,10 @@ func (f *fakeAPI) GetStorages(_ context.Context, r *request.GetStoragesRequest) 
 
 func detailsWith(uuid, state string, labels ...upcloud.Label) *upcloud.ServerDetails {
 	d := &upcloud.ServerDetails{}
-	d.Server.UUID = uuid
-	d.Server.Title = "t-" + uuid
-	d.Server.State = state
-	d.Server.Zone = "zone-x"
+	d.UUID = uuid
+	d.Title = "t-" + uuid
+	d.State = state
+	d.Zone = "zone-x"
 	d.Labels = labels
 	return d
 }
@@ -184,7 +184,7 @@ func TestListByLabel_BuildsFilterAndMaps(t *testing.T) {
 		t.Fatalf("want 1 filter, got %d", len(f.listReq.Filters))
 	}
 	fl, ok := f.listReq.Filters[0].(request.FilterLabel)
-	if !ok || fl.Label.Key != "grp" || fl.Label.Value != "g1" {
+	if !ok || fl.Key != "grp" || fl.Value != "g1" {
 		t.Errorf("bad label filter: %+v", f.listReq.Filters[0])
 	}
 }
@@ -245,6 +245,33 @@ func TestPublicTemplates_GuardAndFilter(t *testing.T) {
 	}
 	if f.storReq.Access != "" {
 		t.Errorf("Access must be empty to avoid the /storage/{access}/{type} 404; got %q", f.storReq.Access)
+	}
+}
+
+func TestGet_MapsDetailsAndIPs(t *testing.T) {
+	d := detailsWith("u", "started", upcloud.Label{Key: "g", Value: "v"})
+	d.IPAddresses = upcloud.IPAddressSlice{
+		{Family: upcloud.IPAddressFamilyIPv4, Access: upcloud.IPAddressAccessPublic, Address: "203.0.113.9"},
+		{Family: upcloud.IPAddressFamilyIPv4, Access: upcloud.IPAddressAccessUtility, Address: "10.1.2.3"},
+		{Family: "IPv6", Access: upcloud.IPAddressAccessPublic, Address: "2001:db8::1"}, // ignored (not IPv4)
+	}
+	c := newWithAPI(&fakeAPI{createResp: d}) // GetServerDetails returns createResp
+	got, err := c.Get(context.Background(), "u")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ExternalIP != "203.0.113.9" || got.InternalIP != "10.1.2.3" {
+		t.Errorf("bad IP mapping: ext=%q int=%q", got.ExternalIP, got.InternalIP)
+	}
+	if got.Labels["g"] != "v" || got.State != "started" {
+		t.Errorf("bad detail mapping: %+v", got)
+	}
+}
+
+func TestGet_Error(t *testing.T) {
+	c := newWithAPI(&fakeAPI{err: errors.New("nope")})
+	if _, err := c.Get(context.Background(), "u"); err == nil {
+		t.Fatal("want error")
 	}
 }
 

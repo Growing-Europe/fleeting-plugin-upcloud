@@ -57,7 +57,7 @@ clean:
 
 # Install the local-dev linters/scanners (CI installs pinned versions itself).
 tools:
-	$(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+	$(GO) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
 	$(GO) install golang.org/x/vuln/cmd/govulncheck@v1.1.4
 	$(GO) install github.com/securego/gosec/v2/cmd/gosec@v2.27.1
 	$(GO) install github.com/zricethezav/gitleaks/v8@v8.24.3
