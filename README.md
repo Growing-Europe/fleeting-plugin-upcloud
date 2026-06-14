@@ -82,7 +82,8 @@ account when credentials are present in the environment, and is skipped otherwis
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). The plugin is intentionally **provider-generic** — UpCloud
+This is an **agent-developed** project — the development contract (invariants, build/verify, Definition
+of Done) lives in [AGENTS.md](AGENTS.md). The plugin is intentionally **provider-generic**: UpCloud
 specifics only, everything site-specific is configuration, no downstream coupling.
 
 ## License
