@@ -42,8 +42,12 @@ type cloud interface {
 	ListByLabel(ctx context.Context, key, value string) ([]ucloud.Server, error)
 	Get(ctx context.Context, uuid string) (*ucloud.Server, error)
 	Stop(ctx context.Context, uuid string, timeout time.Duration) error
+	WaitForState(ctx context.Context, uuid, state string) (*ucloud.Server, error)
 	Delete(ctx context.Context, uuid string) error
 }
+
+// stateStopped is the UpCloud state a server must reach before it can be deleted.
+const stateStopped = "stopped"
 
 // InstanceGroup is the fleeting provider.InstanceGroup implementation. It embeds
 // Config so the fleeting framework can json-unmarshal plugin_config directly into

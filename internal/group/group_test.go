@@ -31,8 +31,13 @@ type fakeCloud struct {
 	stopped      []string
 	stopTimeouts []time.Duration
 	stopErr      error
+	waited       []string // uuids passed to WaitForState
+	waitState    string   // the desired state requested
+	waitErr      error
 	deleted      []string
 	deleteErr    map[string]error
+
+	calls []string // ordered method log, to assert stop->wait->delete sequencing
 }
 
 func (f *fakeCloud) Create(_ context.Context, spec ucloud.ServerSpec) (*ucloud.Server, error) {
@@ -70,11 +75,23 @@ func (f *fakeCloud) Get(_ context.Context, uuid string) (*ucloud.Server, error) 
 func (f *fakeCloud) Stop(_ context.Context, uuid string, timeout time.Duration) error {
 	f.stopped = append(f.stopped, uuid)
 	f.stopTimeouts = append(f.stopTimeouts, timeout)
+	f.calls = append(f.calls, "stop:"+uuid)
 	return f.stopErr
+}
+
+func (f *fakeCloud) WaitForState(_ context.Context, uuid, state string) (*ucloud.Server, error) {
+	f.waited = append(f.waited, uuid)
+	f.waitState = state
+	f.calls = append(f.calls, "wait:"+uuid)
+	if f.waitErr != nil {
+		return nil, f.waitErr
+	}
+	return &ucloud.Server{UUID: uuid, State: state}, nil
 }
 
 func (f *fakeCloud) Delete(_ context.Context, uuid string) error {
 	f.deleted = append(f.deleted, uuid)
+	f.calls = append(f.calls, "delete:"+uuid)
 	if f.deleteErr != nil {
 		return f.deleteErr[uuid]
 	}
@@ -193,6 +210,32 @@ func TestDecrease_DeletesServerAndStoragePartial(t *testing.T) {
 		if to != stopTimeout {
 			t.Errorf("stop timeout = %v, want %v", to, stopTimeout)
 		}
+	}
+	// each instance must be stopped, waited-for-stopped, THEN deleted, in order.
+	if f.waitState != stateStopped {
+		t.Errorf("WaitForState desired = %q, want %q", f.waitState, stateStopped)
+	}
+	want := []string{
+		"stop:a", "wait:a", "delete:a",
+		"stop:b", "wait:b", "delete:b",
+		"stop:c", "wait:c", "delete:c",
+	}
+	if strings.Join(f.calls, ",") != strings.Join(want, ",") {
+		t.Errorf("call order = %v, want stop->wait->delete per instance %v", f.calls, want)
+	}
+}
+
+func TestDecrease_WaitFailureSkipsDelete(t *testing.T) {
+	// Regression for the live-smoke bug: deleting before the server is stopped
+	// 409s. If the wait-for-stopped fails, we must NOT attempt the delete.
+	f := &fakeCloud{waitErr: errors.New("never stopped")}
+	g := New(cfg(), f)
+	removed, err := g.Decrease(context.Background(), []string{"x"})
+	if err == nil || len(removed) != 0 {
+		t.Fatalf("wait failure must abort the delete: removed=%v err=%v", removed, err)
+	}
+	if len(f.deleted) != 0 {
+		t.Errorf("delete must not run when the server never stopped: %v", f.deleted)
 	}
 }
 
