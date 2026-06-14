@@ -1,0 +1,53 @@
+---
+version: 2
+interactions:
+    - id: 0
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: api.upcloud.com
+        form:
+            label:
+                - fpu-spike=m-spike
+        headers:
+            Accept:
+                - application/json
+            Authorization:
+                - Bearer ucat_REDACTED
+            Content-Type:
+                - application/json
+            User-Agent:
+                - upcloud-go-api/8.38.0
+        url: https://api.upcloud.com/1.3/server/?label=fpu-spike%3Dm-spike
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: 46
+        body: |
+            {
+               "servers" : {
+                  "server" : []
+               }
+            }
+        headers:
+            Content-Length:
+                - "46"
+            Content-Type:
+                - application/json; charset=UTF-8
+            Date:
+                - Sun, 14 Jun 2026 15:38:12 GMT
+            Server:
+                - Apache
+            Strict-Transport-Security:
+                - max-age=63072000
+            Upcloud-Cid:
+                - 01KV3CH313K93GNZQJ0STX1SXM
+            Upcloud-Total-Count:
+                - "0"
+        status: 200 OK
+        code: 200
+        duration: 46.020905ms
