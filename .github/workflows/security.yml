@@ -64,6 +64,8 @@ jobs:
           go-version: '1.23'
           check-latest: true
       - name: Install gitleaks
-        run: go install github.com/gitleaks/gitleaks/v8@v8.24.3
+        # NOTE: gitleaks v8.24.3 still declares the legacy module path
+        # github.com/zricethezav/gitleaks/v8 in its go.mod — install via that path.
+        run: go install github.com/zricethezav/gitleaks/v8@v8.24.3
       - name: Run gitleaks (working tree + full history)
         run: gitleaks detect --source . --redact --no-banner --verbose
