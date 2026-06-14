@@ -72,6 +72,11 @@ type Server struct {
 	State  string
 	Zone   string
 	Labels map[string]string
+
+	// Connection addresses (populated by Get / Create / WaitForState, which
+	// return full details; ListByLabel items do not carry them).
+	ExternalIP string // first public IPv4, for external connections
+	InternalIP string // first utility/private IPv4, for in-network connections
 }
 
 // ServerSpec describes a server to create. All values are configuration —

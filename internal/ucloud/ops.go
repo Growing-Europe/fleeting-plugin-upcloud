@@ -91,6 +91,15 @@ func (c *Client) WaitForState(ctx context.Context, uuid, desiredState string) (*
 	return serverFromDetails(details), nil
 }
 
+// Get returns full details for one server, including connection IPs.
+func (c *Client) Get(ctx context.Context, uuid string) (*Server, error) {
+	details, err := c.api.GetServerDetails(ctx, &request.GetServerDetailsRequest{UUID: uuid})
+	if err != nil {
+		return nil, fmt.Errorf("ucloud: get server %s: %w", uuid, err)
+	}
+	return serverFromDetails(details), nil
+}
+
 // Delete removes a server AND its attached storages. Using the
 // delete-with-storages call is mandatory: deleting only the server leaves the
 // cloned OS disk behind, which bills silently.
@@ -149,12 +158,34 @@ func labelsToMap(ls upcloud.LabelSlice) map[string]string {
 	return m
 }
 
-// serverFromDetails maps a full ServerDetails (returned by create/wait), which
-// — unlike a plain Server list item — carries labels.
+// serverFromDetails maps a full ServerDetails (returned by create/wait/get),
+// which — unlike a plain Server list item — carries labels and IP addresses.
 func serverFromDetails(d *upcloud.ServerDetails) *Server {
 	s := serverFromServer(&d.Server)
 	s.Labels = labelsToMap(d.Labels)
+	s.ExternalIP, s.InternalIP = pickIPs(d.IPAddresses)
 	return &s
+}
+
+// pickIPs selects the first public IPv4 (external) and the first utility or
+// private IPv4 (internal) from a server's addresses.
+func pickIPs(addrs upcloud.IPAddressSlice) (external, internal string) {
+	for _, ip := range addrs {
+		if ip.Family != upcloud.IPAddressFamilyIPv4 {
+			continue
+		}
+		switch ip.Access {
+		case upcloud.IPAddressAccessPublic:
+			if external == "" {
+				external = ip.Address
+			}
+		case upcloud.IPAddressAccessUtility, upcloud.IPAddressAccessPrivate:
+			if internal == "" {
+				internal = ip.Address
+			}
+		}
+	}
+	return external, internal
 }
 
 // serverFromServer maps a list item. Labels are NOT present on the list

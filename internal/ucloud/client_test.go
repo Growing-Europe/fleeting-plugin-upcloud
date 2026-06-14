@@ -248,6 +248,33 @@ func TestPublicTemplates_GuardAndFilter(t *testing.T) {
 	}
 }
 
+func TestGet_MapsDetailsAndIPs(t *testing.T) {
+	d := detailsWith("u", "started", upcloud.Label{Key: "g", Value: "v"})
+	d.IPAddresses = upcloud.IPAddressSlice{
+		{Family: upcloud.IPAddressFamilyIPv4, Access: upcloud.IPAddressAccessPublic, Address: "203.0.113.9"},
+		{Family: upcloud.IPAddressFamilyIPv4, Access: upcloud.IPAddressAccessUtility, Address: "10.1.2.3"},
+		{Family: "IPv6", Access: upcloud.IPAddressAccessPublic, Address: "2001:db8::1"}, // ignored (not IPv4)
+	}
+	c := newWithAPI(&fakeAPI{createResp: d}) // GetServerDetails returns createResp
+	got, err := c.Get(context.Background(), "u")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ExternalIP != "203.0.113.9" || got.InternalIP != "10.1.2.3" {
+		t.Errorf("bad IP mapping: ext=%q int=%q", got.ExternalIP, got.InternalIP)
+	}
+	if got.Labels["g"] != "v" || got.State != "started" {
+		t.Errorf("bad detail mapping: %+v", got)
+	}
+}
+
+func TestGet_Error(t *testing.T) {
+	c := newWithAPI(&fakeAPI{err: errors.New("nope")})
+	if _, err := c.Get(context.Background(), "u"); err == nil {
+		t.Fatal("want error")
+	}
+}
+
 func TestErrorWrapping(t *testing.T) {
 	sentinel := errors.New("boom")
 	f := &fakeAPI{err: sentinel}
