@@ -1,0 +1,75 @@
+# goreleaser configuration for fleeting-plugin-upcloud.
+# Produces signed, SBOM-attached release artifacts. SLSA provenance is generated
+# in the release workflow (slsa-github-generator) over the checksums file.
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: fleeting-plugin-upcloud
+    binary: fleeting-plugin-upcloud
+    main: .
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.Version={{ .Version }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+# Software Bill of Materials per archive (syft).
+sboms:
+  - id: archive
+    artifacts: archive
+
+# Keyless cosign signature over the checksums file (covers every artifact via
+# the checksums). Runs in CI with OIDC (id-token: write).
+signs:
+  - cmd: cosign
+    certificate: "${artifact}.pem"
+    signature: "${artifact}.sig"
+    args:
+      - sign-blob
+      - "--output-certificate=${certificate}"
+      - "--output-signature=${signature}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+    output: true
+
+release:
+  github:
+    owner: Growing-Europe
+    name: fleeting-plugin-upcloud
+  # Pre-1.0: mark pre-releases automatically (e.g. v0.1.0-rc1); v0.1.0 is a full release.
+  prerelease: auto
+  draft: false
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
