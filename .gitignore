@@ -27,6 +27,20 @@ go.work.sum
 # env file
 .env
 
-# Editor/IDE
-# .idea/
-# .vscode/
+# --- fleeting-plugin-upcloud additions ---
+
+# Built plugin binary + release artifacts
+/fleeting-plugin-upcloud
+/dist/
+
+# Secrets & local runner config — NEVER commit an UpCloud API token or a live runner config.
+# Ship config.example.toml (placeholder values) instead.
+config.toml
+.env.*
+*.pem
+*.key
+
+# Editor / IDE / OS
+.idea/
+.vscode/
+.DS_Store
