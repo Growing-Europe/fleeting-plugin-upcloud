@@ -119,9 +119,15 @@ func (g *InstanceGroup) Decrease(ctx context.Context, instances []string) ([]str
 	removed := make([]string, 0, len(instances))
 	var errs []error
 	for _, id := range instances {
-		// A best-effort stop first; UpCloud requires a stopped server to delete.
+		// UpCloud refuses to delete a running server, and Stop is asynchronous —
+		// it only *initiates* the shutdown. We must wait for the server to reach
+		// 'stopped' before deleting, or the delete fails with SERVER_STATE_ILLEGAL.
 		if err := g.client.Stop(ctx, id, stopTimeout); err != nil {
-			g.logf("stop before delete failed (continuing to delete)", "uuid", id, "error", err.Error())
+			g.logf("stop request failed (may already be stopping)", "uuid", id, "error", err.Error())
+		}
+		if _, err := g.client.WaitForState(ctx, id, stateStopped); err != nil {
+			errs = append(errs, fmt.Errorf("decrease %s: wait for stopped: %w", id, err))
+			continue
 		}
 		if err := g.client.Delete(ctx, id); err != nil {
 			errs = append(errs, fmt.Errorf("decrease %s: %w", id, err))

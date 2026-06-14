@@ -83,8 +83,9 @@ jobs:
           check-latest: true
       - name: Install gremlins
         run: go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0
-      # Mutation testing on the synthetic-instance-group hard core. Fails below
-      # 80% efficacy (killed mutants / viable mutants), making the figure
-      # reproducible CI evidence rather than a self-reported number.
-      - name: Mutation test (internal/group, efficacy >= 80%)
-        run: gremlins unleash ./internal/group/ --threshold-efficacy 80
+      # Mutation testing across the internal packages (the synthetic-instance-
+      # group hard core plus the SDK wrapper and config). Fails below 80% efficacy
+      # (killed mutants / viable mutants), making the figure reproducible CI
+      # evidence rather than a self-reported number. Currently 100%.
+      - name: Mutation test (internal/..., efficacy >= 80%)
+        run: gremlins unleash ./internal/... --threshold-efficacy 80
