@@ -54,8 +54,15 @@ jobs:
         run: go vet ./...
       - name: Test (race + coverage)
         run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
-      - name: Coverage summary
-        run: go tool cover -func=coverage.out || echo "no coverage yet"
+      - name: Coverage gate (>= 90%)
+        env:
+          COVERAGE_FLOOR: '90'
+        run: |
+          go tool cover -func=coverage.out
+          total="$(go tool cover -func=coverage.out | awk '/^total:/ { gsub("%","",$3); print $3 }')"
+          echo "total coverage: ${total}% (floor ${COVERAGE_FLOOR}%)"
+          awk -v t="$total" -v f="$COVERAGE_FLOOR" 'BEGIN { exit (t+0 >= f+0 ? 0 : 1) }' \
+            || { echo "::error::coverage ${total}% is below the ${COVERAGE_FLOOR}% floor"; exit 1; }
       - uses: actions/upload-artifact@6f51ac03b9356f520e9adb1b1b7802705f340c2b # v4.5.0
         with:
           name: coverage
