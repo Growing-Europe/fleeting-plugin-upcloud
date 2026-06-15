@@ -3,7 +3,7 @@
 //
 // Everything here is configuration supplied by the operator — no values are
 // hardcoded or site-specific. The UpCloud API token is NEVER part of this
-// config; it is read from the environment by package ucloud. Parsing is strict
+// config; it is read from the environment by package upcloud. Parsing is strict
 // (unknown keys are rejected), which also fails closed if a token-like field is
 // ever placed in the config by mistake.
 package config

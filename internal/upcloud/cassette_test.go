@@ -1,4 +1,4 @@
-package ucloud
+package upcloud
 
 import (
 	"context"
@@ -20,7 +20,7 @@ import (
 //
 // Re-record (read-only, NON-billable calls only) with:
 //
-//	UCLOUD_RECORD=1 UPCLOUD_TOKEN=<ucat_…> go test ./internal/ucloud/ -run Cassette
+//	UCLOUD_RECORD=1 UPCLOUD_TOKEN=<ucat_…> go test ./internal/upcloud/ -run Cassette
 //
 // The BeforeSaveHook scrubs the bearer token and every site-specific value
 // (account username, credit balance, server/storage UUIDs, IPs) before anything

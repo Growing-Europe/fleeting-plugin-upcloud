@@ -11,21 +11,21 @@ import (
 	"gitlab.com/gitlab-org/fleeting/fleeting/provider"
 
 	"github.com/Growing-Europe/fleeting-plugin-upcloud/internal/config"
-	"github.com/Growing-Europe/fleeting-plugin-upcloud/internal/ucloud"
+	"github.com/Growing-Europe/fleeting-plugin-upcloud/internal/upcloud"
 )
 
 // fakeCloud is a deterministic cloud double recording calls and returning
 // configured results — no network, no credentials.
 type fakeCloud struct {
-	created     []ucloud.ServerSpec
+	created     []upcloud.ServerSpec
 	createErrAt int // 1-based call index that errors; 0 = never
 	createCalls int
 	createErr   error
 
-	listResult []ucloud.Server
+	listResult []upcloud.Server
 	listErr    error
 
-	getResult *ucloud.Server
+	getResult *upcloud.Server
 	getErr    error
 
 	stopped      []string
@@ -40,7 +40,7 @@ type fakeCloud struct {
 	calls []string // ordered method log, to assert stop->wait->delete sequencing
 }
 
-func (f *fakeCloud) Create(_ context.Context, spec ucloud.ServerSpec) (*ucloud.Server, error) {
+func (f *fakeCloud) Create(_ context.Context, spec upcloud.ServerSpec) (*upcloud.Server, error) {
 	f.createCalls++
 	f.created = append(f.created, spec)
 	if f.createErrAt != 0 && f.createCalls == f.createErrAt {
@@ -49,7 +49,7 @@ func (f *fakeCloud) Create(_ context.Context, spec ucloud.ServerSpec) (*ucloud.S
 		}
 		return nil, errors.New("synthetic create failure")
 	}
-	return &ucloud.Server{
+	return &upcloud.Server{
 		UUID:   "uuid-" + spec.Hostname,
 		Title:  spec.Title,
 		State:  "maintenance",
@@ -58,18 +58,18 @@ func (f *fakeCloud) Create(_ context.Context, spec ucloud.ServerSpec) (*ucloud.S
 	}, nil
 }
 
-func (f *fakeCloud) ListByLabel(_ context.Context, _, _ string) ([]ucloud.Server, error) {
+func (f *fakeCloud) ListByLabel(_ context.Context, _, _ string) ([]upcloud.Server, error) {
 	return f.listResult, f.listErr
 }
 
-func (f *fakeCloud) Get(_ context.Context, uuid string) (*ucloud.Server, error) {
+func (f *fakeCloud) Get(_ context.Context, uuid string) (*upcloud.Server, error) {
 	if f.getErr != nil {
 		return nil, f.getErr
 	}
 	if f.getResult != nil {
 		return f.getResult, nil
 	}
-	return &ucloud.Server{UUID: uuid}, nil
+	return &upcloud.Server{UUID: uuid}, nil
 }
 
 func (f *fakeCloud) Stop(_ context.Context, uuid string, timeout time.Duration) error {
@@ -79,14 +79,14 @@ func (f *fakeCloud) Stop(_ context.Context, uuid string, timeout time.Duration) 
 	return f.stopErr
 }
 
-func (f *fakeCloud) WaitForState(_ context.Context, uuid, state string) (*ucloud.Server, error) {
+func (f *fakeCloud) WaitForState(_ context.Context, uuid, state string) (*upcloud.Server, error) {
 	f.waited = append(f.waited, uuid)
 	f.waitState = state
 	f.calls = append(f.calls, "wait:"+uuid)
 	if f.waitErr != nil {
 		return nil, f.waitErr
 	}
-	return &ucloud.Server{UUID: uuid, State: state}, nil
+	return &upcloud.Server{UUID: uuid, State: state}, nil
 }
 
 func (f *fakeCloud) Delete(_ context.Context, uuid string) error {
@@ -137,7 +137,7 @@ func TestIncrease_CreatesLabelledServers(t *testing.T) {
 }
 
 func TestIncrease_FailClosedAtCapacity(t *testing.T) {
-	f := &fakeCloud{listResult: []ucloud.Server{{UUID: "a"}, {UUID: "b"}, {UUID: "c"}}} // already 3, cap 3
+	f := &fakeCloud{listResult: []upcloud.Server{{UUID: "a"}, {UUID: "b"}, {UUID: "c"}}} // already 3, cap 3
 	g := New(cfg(), f)
 	n, err := g.Increase(context.Background(), 2)
 	if n != 0 || !errors.Is(err, ErrAtCapacity) {
@@ -149,7 +149,7 @@ func TestIncrease_FailClosedAtCapacity(t *testing.T) {
 }
 
 func TestIncrease_ClampsToRemainingRoom(t *testing.T) {
-	f := &fakeCloud{listResult: []ucloud.Server{{UUID: "a"}}} // 1 existing, cap 3 -> room 2
+	f := &fakeCloud{listResult: []upcloud.Server{{UUID: "a"}}} // 1 existing, cap 3 -> room 2
 	g := New(cfg(), f)
 	n, err := g.Increase(context.Background(), 5) // asked 5, only 2 allowed
 	if err != nil || n != 2 {
@@ -249,7 +249,7 @@ func TestDecrease_StopFailureStillDeletes(t *testing.T) {
 }
 
 func TestUpdate_ReconcilesFromLabelList(t *testing.T) {
-	f := &fakeCloud{listResult: []ucloud.Server{
+	f := &fakeCloud{listResult: []upcloud.Server{
 		{UUID: "a", State: "started"},
 		{UUID: "b", State: "maintenance"},
 		{UUID: "c", State: "stopped"},
@@ -275,7 +275,7 @@ func TestUpdate_ListErrorPropagates(t *testing.T) {
 }
 
 func TestConnectInfo(t *testing.T) {
-	f := &fakeCloud{getResult: &ucloud.Server{UUID: "z", ExternalIP: "203.0.113.7", InternalIP: "10.0.0.5"}}
+	f := &fakeCloud{getResult: &upcloud.Server{UUID: "z", ExternalIP: "203.0.113.7", InternalIP: "10.0.0.5"}}
 	g := New(cfg(), f)
 	g.settings.Username = "root"
 	info, err := g.ConnectInfo(context.Background(), "z")

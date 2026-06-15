@@ -1,4 +1,4 @@
-package ucloud
+package upcloud
 
 import (
 	"context"
@@ -44,7 +44,7 @@ func (c *Client) Create(ctx context.Context, spec ServerSpec) (*Server, error) {
 	}
 	details, err := c.api.CreateServer(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("ucloud: create server %q: %w", spec.Title, err)
+		return nil, fmt.Errorf("upcloud: create server %q: %w", spec.Title, err)
 	}
 	return serverFromDetails(details), nil
 }
@@ -58,7 +58,7 @@ func (c *Client) ListByLabel(ctx context.Context, key, value string) ([]Server, 
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("ucloud: list servers by label %s=%s: %w", key, value, err)
+		return nil, fmt.Errorf("upcloud: list servers by label %s=%s: %w", key, value, err)
 	}
 	out := make([]Server, 0, len(resp.Servers))
 	for i := range resp.Servers {
@@ -74,7 +74,7 @@ func (c *Client) Stop(ctx context.Context, uuid string, timeout time.Duration) e
 		StopType: request.ServerStopTypeHard,
 		Timeout:  timeout,
 	}); err != nil {
-		return fmt.Errorf("ucloud: stop server %s: %w", uuid, err)
+		return fmt.Errorf("upcloud: stop server %s: %w", uuid, err)
 	}
 	return nil
 }
@@ -86,7 +86,7 @@ func (c *Client) WaitForState(ctx context.Context, uuid, desiredState string) (*
 		DesiredState: desiredState,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("ucloud: wait for server %s state %q: %w", uuid, desiredState, err)
+		return nil, fmt.Errorf("upcloud: wait for server %s state %q: %w", uuid, desiredState, err)
 	}
 	return serverFromDetails(details), nil
 }
@@ -95,7 +95,7 @@ func (c *Client) WaitForState(ctx context.Context, uuid, desiredState string) (*
 func (c *Client) Get(ctx context.Context, uuid string) (*Server, error) {
 	details, err := c.api.GetServerDetails(ctx, &request.GetServerDetailsRequest{UUID: uuid})
 	if err != nil {
-		return nil, fmt.Errorf("ucloud: get server %s: %w", uuid, err)
+		return nil, fmt.Errorf("upcloud: get server %s: %w", uuid, err)
 	}
 	return serverFromDetails(details), nil
 }
@@ -107,7 +107,7 @@ func (c *Client) Delete(ctx context.Context, uuid string) error {
 	if err := c.api.DeleteServerAndStorages(ctx, &request.DeleteServerAndStoragesRequest{
 		UUID: uuid,
 	}); err != nil {
-		return fmt.Errorf("ucloud: delete server+storages %s: %w", uuid, err)
+		return fmt.Errorf("upcloud: delete server+storages %s: %w", uuid, err)
 	}
 	return nil
 }
@@ -120,7 +120,7 @@ func (c *Client) Delete(ctx context.Context, uuid string) error {
 func (c *Client) PublicTemplates(ctx context.Context) ([]upcloud.Storage, error) {
 	resp, err := c.api.GetStorages(ctx, &request.GetStoragesRequest{Type: upcloud.StorageTypeTemplate})
 	if err != nil {
-		return nil, fmt.Errorf("ucloud: list templates: %w", err)
+		return nil, fmt.Errorf("upcloud: list templates: %w", err)
 	}
 	out := make([]upcloud.Storage, 0, len(resp.Storages))
 	for _, s := range resp.Storages {

@@ -6,7 +6,7 @@ import (
 
 	"pgregory.net/rapid"
 
-	"github.com/Growing-Europe/fleeting-plugin-upcloud/internal/ucloud"
+	"github.com/Growing-Europe/fleeting-plugin-upcloud/internal/upcloud"
 )
 
 // TestProp_IncreaseNeverExceedsCapacity is the core safety invariant: for any
@@ -19,7 +19,7 @@ func TestProp_IncreaseNeverExceedsCapacity(t *testing.T) {
 		current := rapid.IntRange(0, 25).Draw(t, "current")
 		ask := rapid.IntRange(0, 30).Draw(t, "ask")
 
-		f := &fakeCloud{listResult: make([]ucloud.Server, current)}
+		f := &fakeCloud{listResult: make([]upcloud.Server, current)}
 		c := cfg()
 		c.MaxInstances = capacity
 		g := New(c, f)
