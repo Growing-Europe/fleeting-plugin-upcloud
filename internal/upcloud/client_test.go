@@ -1,4 +1,4 @@
-package ucloud
+package upcloud
 
 import (
 	"context"

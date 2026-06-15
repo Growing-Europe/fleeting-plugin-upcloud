@@ -1,4 +1,4 @@
-// Package ucloud is a thin, provider-generic wrapper over the official
+// Package upcloud is a thin, provider-generic wrapper over the official
 // upcloud-go-api SDK. It exposes only the operations the fleeting instance
 // group needs — create, list-by-label, delete-with-storages, and state waits —
 // in terms of plain structs, so the rest of the plugin never depends on SDK
@@ -6,7 +6,7 @@
 //
 // The UpCloud API token is read from the environment only (never from config or
 // source); construction fails closed when it is absent.
-package ucloud
+package upcloud
 
 import (
 	"context"
@@ -40,7 +40,7 @@ type Client struct {
 
 // ErrNoToken is returned when no UpCloud API token is available in the
 // environment. Construction fails closed rather than silently defaulting.
-var ErrNoToken = errors.New("ucloud: no UpCloud API token in environment (set UPCLOUD_TOKEN)")
+var ErrNoToken = errors.New("upcloud: no UpCloud API token in environment (set UPCLOUD_TOKEN)")
 
 // New builds a Client from the environment. The SDK's NewFromEnv selects the
 // experimental bearer path when UPCLOUD_TOKEN is set; we additionally require a
@@ -53,7 +53,7 @@ func New(opts ...client.ConfigFn) (*Client, error) {
 	}
 	c, err := client.NewFromEnv(opts...)
 	if err != nil {
-		return nil, fmt.Errorf("ucloud: build client: %w", err)
+		return nil, fmt.Errorf("upcloud: build client: %w", err)
 	}
 	return &Client{api: service.New(c)}, nil
 }

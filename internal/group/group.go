@@ -21,7 +21,7 @@ import (
 	"gitlab.com/gitlab-org/fleeting/fleeting/provider"
 
 	"github.com/Growing-Europe/fleeting-plugin-upcloud/internal/config"
-	"github.com/Growing-Europe/fleeting-plugin-upcloud/internal/ucloud"
+	"github.com/Growing-Europe/fleeting-plugin-upcloud/internal/upcloud"
 )
 
 // groupLabelKey is the label that defines membership + per-manager ownership.
@@ -38,11 +38,11 @@ var ErrAtCapacity = errors.New("group at capacity")
 // cloud is the slice of the UpCloud client the group depends on. An interface
 // keeps the group deterministically testable with a fake — no network, no creds.
 type cloud interface {
-	Create(ctx context.Context, spec ucloud.ServerSpec) (*ucloud.Server, error)
-	ListByLabel(ctx context.Context, key, value string) ([]ucloud.Server, error)
-	Get(ctx context.Context, uuid string) (*ucloud.Server, error)
+	Create(ctx context.Context, spec upcloud.ServerSpec) (*upcloud.Server, error)
+	ListByLabel(ctx context.Context, key, value string) ([]upcloud.Server, error)
+	Get(ctx context.Context, uuid string) (*upcloud.Server, error)
 	Stop(ctx context.Context, uuid string, timeout time.Duration) error
-	WaitForState(ctx context.Context, uuid, state string) (*ucloud.Server, error)
+	WaitForState(ctx context.Context, uuid, state string) (*upcloud.Server, error)
 	Delete(ctx context.Context, uuid string) error
 }
 
@@ -66,7 +66,7 @@ type InstanceGroup struct {
 var _ provider.InstanceGroup = (*InstanceGroup)(nil)
 
 // New builds an InstanceGroup with an explicit cloud client (used by tests).
-// Production wiring (M4) constructs the real ucloud client in Init. The group
+// Production wiring (M4) constructs the real upcloud client in Init. The group
 // scope is pre-set from the config so the group is usable without Init.
 func New(cfg config.Config, c cloud) *InstanceGroup {
 	return &InstanceGroup{Config: cfg, client: c, scope: cfg.HostnamePrefix}
@@ -88,6 +88,6 @@ func (g *InstanceGroup) groupLabels() map[string]string {
 
 // listOwned returns every server in this manager's group scope. This is the
 // single source of truth — all of Update/Increase/Decrease reconcile from it.
-func (g *InstanceGroup) listOwned(ctx context.Context) ([]ucloud.Server, error) {
+func (g *InstanceGroup) listOwned(ctx context.Context) ([]upcloud.Server, error) {
 	return g.client.ListByLabel(ctx, groupLabelKey, g.scope)
 }

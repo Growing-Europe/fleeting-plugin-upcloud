@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"gitlab.com/gitlab-org/fleeting/fleeting/provider"
 
-	"github.com/Growing-Europe/fleeting-plugin-upcloud/internal/ucloud"
+	"github.com/Growing-Europe/fleeting-plugin-upcloud/internal/upcloud"
 )
 
 // Version is reported in ProviderInfo; overridden at build time in M4.
@@ -44,7 +44,7 @@ func (g *InstanceGroup) Init(_ context.Context, log hclog.Logger, settings provi
 	}
 
 	if g.client == nil {
-		c, err := ucloud.New()
+		c, err := upcloud.New()
 		if err != nil {
 			return provider.ProviderInfo{}, err
 		}
@@ -171,9 +171,9 @@ func (g *InstanceGroup) Resume(_ context.Context, instances []string) ([]string,
 // (no account-level key object) and the client holds no closable resources.
 func (g *InstanceGroup) Shutdown(_ context.Context) error { return nil }
 
-func (g *InstanceGroup) buildSpec() ucloud.ServerSpec {
+func (g *InstanceGroup) buildSpec() upcloud.ServerSpec {
 	host := g.scope + "-" + randSuffix()
-	return ucloud.ServerSpec{
+	return upcloud.ServerSpec{
 		Title:         host,
 		Hostname:      host,
 		Zone:          g.Zone,
