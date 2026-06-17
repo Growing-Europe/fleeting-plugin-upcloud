@@ -10,8 +10,12 @@ provisions and autoscales [UpCloud](https://upcloud.com) cloud servers as epheme
 [Instance / Docker Autoscaler executor](https://docs.gitlab.com/runner/executors/docker_autoscaler/),
 the official successor to the deprecated `docker-machine` autoscaler.
 
-> 🚧 **Status: early development.** Repository scaffolding is in place; the plugin implementation is in
-> progress and **not yet functional**. Issues and stars welcome — production use is not yet supported.
+> **Status: early access — `v0.1.1` released.** The first signed release is published: keyless
+> [cosign](https://docs.sigstore.dev/)-signed artifacts with [SLSA](https://slsa.dev) build provenance
+> and SBOMs (see [Verifying releases](#verifying-releases)). The full create → connect → destroy
+> lifecycle has been exercised against a live UpCloud API. The plugin is **functional but early** —
+> interfaces and configuration may still change before `v1.0`, so evaluate carefully before relying on
+> it in production. Issues and stars welcome.
 
 ## Why
 
@@ -43,6 +47,38 @@ from configuration.
 
 Download a release binary from the [Releases](../../releases) page (or `go install`), then reference it
 from your runner configuration — see [`config.example.toml`](config.example.toml).
+
+## Verifying releases
+
+Every release ships a keyless [cosign](https://docs.sigstore.dev/) signature over `checksums.txt`
+(emitted as a Sigstore bundle, `checksums.txt.sigstore.json`), [SLSA](https://slsa.dev) build
+provenance (`multiple.intoto.jsonl`), and a per-archive SBOM (`*.sbom.json`).
+
+**1. Check the artifact digests:**
+
+```sh
+sha256sum -c checksums.txt
+```
+
+**2. Verify the cosign signature.** Keyless verification *must* pin the signing identity — otherwise it
+confirms only that *something* signed the file, not *who*. Replace `v0.1.1` with the tag you downloaded:
+
+```sh
+cosign verify-blob \
+  --bundle checksums.txt.sigstore.json \
+  --certificate-identity 'https://github.com/Growing-Europe/fleeting-plugin-upcloud/.github/workflows/release.yml@refs/tags/v0.1.1' \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+  checksums.txt
+```
+
+**3. Verify the SLSA provenance** with [`slsa-verifier`](https://github.com/slsa-framework/slsa-verifier):
+
+```sh
+slsa-verifier verify-artifact fleeting-plugin-upcloud_0.1.1_linux_amd64.tar.gz \
+  --provenance-path multiple.intoto.jsonl \
+  --source-uri github.com/Growing-Europe/fleeting-plugin-upcloud \
+  --source-tag v0.1.1
+```
 
 ## Configuration
 
