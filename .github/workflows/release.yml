@@ -29,6 +29,12 @@ jobs:
           go-version: 'stable'
           check-latest: true
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          # Pin the cosign BINARY (not just the action) so CI uses the exact
+          # version the signs: block was validated against — sign-blob --bundle
+          # producing the new Sigstore format is the default in v3.0.6. Without
+          # this, an action-default bump could silently change cosign behavior.
+          cosign-release: 'v3.0.6'
       - uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
       - uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
         with:

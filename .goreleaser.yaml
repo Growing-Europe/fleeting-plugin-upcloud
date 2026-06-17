@@ -41,9 +41,12 @@ sboms:
 # Keyless cosign signature over the checksums file (covers every artifact via
 # the checksums). Runs in CI with OIDC (id-token: write). Emits a single Sigstore
 # bundle (cert+signature+rekor) — the canonical goreleaser form. The legacy split
-# --output-signature/--output-certificate broke under current cosign (empty
-# --bundle path -> "create bundle file" error); the bundle form fixes it.
-# Verify: cosign verify-blob --bundle checksums.txt.sigstore.json checksums.txt
+# --output-signature/--output-certificate broke the v0.1.0 release (empty --bundle
+# path -> "create bundle file: open : no such file or directory"); the bundle form
+# fixes it. Validated against the exact CI binary (cosign v3.0.6, pinned in
+# release.yml), where --new-bundle-format defaults to true so --bundle emits a
+# v0.3 Sigstore bundle (application/vnd.dev.sigstore.bundle.v0.3+json).
+# Verify: cosign verify-blob --bundle checksums.txt.sigstore.json --new-bundle-format checksums.txt
 signs:
   - cmd: cosign
     signature: "${artifact}.sigstore.json"
