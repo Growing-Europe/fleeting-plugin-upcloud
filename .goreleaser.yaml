@@ -39,15 +39,17 @@ sboms:
     artifacts: archive
 
 # Keyless cosign signature over the checksums file (covers every artifact via
-# the checksums). Runs in CI with OIDC (id-token: write).
+# the checksums). Runs in CI with OIDC (id-token: write). Emits a single Sigstore
+# bundle (cert+signature+rekor) — the canonical goreleaser form. The legacy split
+# --output-signature/--output-certificate broke under current cosign (empty
+# --bundle path -> "create bundle file" error); the bundle form fixes it.
+# Verify: cosign verify-blob --bundle checksums.txt.sigstore.json checksums.txt
 signs:
   - cmd: cosign
-    certificate: "${artifact}.pem"
-    signature: "${artifact}.sig"
+    signature: "${artifact}.sigstore.json"
     args:
       - sign-blob
-      - "--output-certificate=${certificate}"
-      - "--output-signature=${signature}"
+      - "--bundle=${signature}"
       - "${artifact}"
       - "--yes"
     artifacts: checksum
