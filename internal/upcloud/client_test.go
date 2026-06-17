@@ -153,6 +153,49 @@ func TestCreate_BuildsRequestAndMaps(t *testing.T) {
 	}
 }
 
+// TestCreate_AttachesConfiguredNetworking is the reachability regression guard.
+// A server with a configured private SDN MUST be created with an explicit
+// private interface on that network. Without it UpCloud attaches only the
+// default interfaces (public + utility) and the instance never joins the SDN —
+// so a manager that reaches the fleet only over the SDN's IPsec tunnel can never
+// dial it (the docker-autoscaler connector hangs on the unreachable address and
+// the job system-fails in prepare). This test FAILS on the pre-fix code (no
+// Networking block) and passes once Create() attaches the interfaces.
+func TestCreate_AttachesConfiguredNetworking(t *testing.T) {
+	f := &fakeAPI{createResp: detailsWith("u", "maintenance")}
+	c := newWithAPI(f)
+
+	if _, err := c.Create(context.Background(), ServerSpec{
+		Title: "srv", Hostname: "srv", Zone: "z1", Plan: "1xCPU-1GB",
+		Template: "tmpl-uuid", StorageSizeGB: 25,
+		Network: "sdn-uuid", UtilityNetwork: true,
+	}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	r := f.createReq
+	if r.Networking == nil {
+		t.Fatal("CreateServerRequest.Networking is nil — server would get DEFAULT interfaces (public+utility), not the configured SDN; this is the fleet-wide dial-hang regression")
+	}
+	var hasPrivate, hasUtility bool
+	for _, i := range r.Networking.Interfaces {
+		if i.Type == upcloud.NetworkTypePrivate && i.Network == "sdn-uuid" {
+			hasPrivate = true
+			if len(i.IPAddresses) == 0 || i.IPAddresses[0].Family != upcloud.IPAddressFamilyIPv4 {
+				t.Errorf("private SDN interface missing IPv4 address request: %+v", i)
+			}
+		}
+		if i.Type == upcloud.NetworkTypeUtility {
+			hasUtility = true
+		}
+	}
+	if !hasPrivate {
+		t.Error("no private interface attached to the configured SDN network 'sdn-uuid' — server unreachable over the tunnel")
+	}
+	if !hasUtility {
+		t.Error("utility_network=true but no utility interface attached")
+	}
+}
+
 func TestCreate_NoLoginUserWhenNoKeysOrUserData(t *testing.T) {
 	f := &fakeAPI{createResp: detailsWith("u", "started")}
 	c := newWithAPI(f)

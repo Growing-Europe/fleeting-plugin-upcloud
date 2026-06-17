@@ -91,4 +91,14 @@ type ServerSpec struct {
 	Labels        map[string]string
 	SSHKeys       []string
 	UserData      string
+
+	// Networking. At least one must be set or the created server is created
+	// with UpCloud's DEFAULT interfaces (public + utility) and is NOT attached
+	// to the configured private SDN — leaving it unreachable from a manager that
+	// reaches the fleet only over the SDN's IPsec tunnel (the dial hangs forever).
+	// See Create(): these drive the explicit request.Networking interfaces.
+	Network        string // private SDN network UUID (attaches a private interface)
+	UtilityNetwork bool   // attach a utility-network interface
+	PublicIPv4     bool   // attach a public IPv4 interface
+	PublicIPv6     bool   // attach a public IPv6 interface
 }

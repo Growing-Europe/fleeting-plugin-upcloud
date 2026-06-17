@@ -42,11 +42,54 @@ func (c *Client) Create(ctx context.Context, spec ServerSpec) (*Server, error) {
 		}
 		req.UserData = spec.UserData
 	}
+	// Attach the configured interfaces EXPLICITLY. Without a Networking block,
+	// UpCloud falls back to default interfaces (public + utility) and never joins
+	// the private SDN, so a manager reaching the fleet only over the SDN tunnel
+	// can never dial the instance (the connector hangs on the unreachable utility
+	// address). The private SDN interface is what makes the runner reachable.
+	if ifaces := networkInterfaces(spec); len(ifaces) > 0 {
+		req.Networking = &request.CreateServerNetworking{Interfaces: ifaces}
+	}
 	details, err := c.api.CreateServer(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("upcloud: create server %q: %w", spec.Title, err)
 	}
 	return serverFromDetails(details), nil
+}
+
+// networkInterfaces translates the spec's networking selection into explicit
+// UpCloud create interfaces. The private SDN interface (when Network is set) is
+// the load-bearing one: it puts the server on the SDN the manager reaches over
+// its IPsec tunnel. Order is private, utility, public so the SDN/private address
+// is the server's primary internal address.
+func networkInterfaces(spec ServerSpec) request.CreateServerInterfaceSlice {
+	var ifaces request.CreateServerInterfaceSlice
+	if spec.Network != "" {
+		ifaces = append(ifaces, request.CreateServerInterface{
+			Type:        upcloud.NetworkTypePrivate,
+			Network:     spec.Network,
+			IPAddresses: request.CreateServerIPAddressSlice{{Family: upcloud.IPAddressFamilyIPv4}},
+		})
+	}
+	if spec.UtilityNetwork {
+		ifaces = append(ifaces, request.CreateServerInterface{
+			Type:        upcloud.NetworkTypeUtility,
+			IPAddresses: request.CreateServerIPAddressSlice{{Family: upcloud.IPAddressFamilyIPv4}},
+		})
+	}
+	if spec.PublicIPv4 {
+		ifaces = append(ifaces, request.CreateServerInterface{
+			Type:        upcloud.NetworkTypePublic,
+			IPAddresses: request.CreateServerIPAddressSlice{{Family: upcloud.IPAddressFamilyIPv4}},
+		})
+	}
+	if spec.PublicIPv6 {
+		ifaces = append(ifaces, request.CreateServerInterface{
+			Type:        upcloud.NetworkTypePublic,
+			IPAddresses: request.CreateServerIPAddressSlice{{Family: upcloud.IPAddressFamilyIPv6}},
+		})
+	}
+	return ifaces
 }
 
 // ListByLabel returns every server carrying the given label key=value. This is
