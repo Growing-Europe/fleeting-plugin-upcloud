@@ -76,7 +76,7 @@ type Server struct {
 	// Connection addresses (populated by Get / Create / WaitForState, which
 	// return full details; ListByLabel items do not carry them).
 	ExternalIP string // first public IPv4, for external connections
-	InternalIP string // first utility/private IPv4, for in-network connections
+	InternalIP string // in-network dial address: PRIVATE/SDN IPv4 preferred, utility only as fallback
 }
 
 // ServerSpec describes a server to create. All values are configuration —

@@ -210,9 +210,15 @@ func serverFromDetails(d *upcloud.ServerDetails) *Server {
 	return &s
 }
 
-// pickIPs selects the first public IPv4 (external) and the first utility or
-// private IPv4 (internal) from a server's addresses.
+// pickIPs selects the first public IPv4 (external) and the internal IPv4 the
+// manager dials (internal). The manager reaches the fleet ONLY over the private
+// SDN (IPsec tunnel), so a PRIVATE address is PREFERRED for internal; utility is
+// only a fallback when no private address is attached. This preference is
+// independent of UpCloud's (undocumented) address ordering — a utility address
+// listed before a private one must NOT win, or the connector dials the
+// unreachable utility IP and hangs. See TestPickIPs_PrefersPrivateOverUtility.
 func pickIPs(addrs upcloud.IPAddressSlice) (external, internal string) {
+	var private, utility string
 	for _, ip := range addrs {
 		if ip.Family != upcloud.IPAddressFamilyIPv4 {
 			continue
@@ -222,11 +228,20 @@ func pickIPs(addrs upcloud.IPAddressSlice) (external, internal string) {
 			if external == "" {
 				external = ip.Address
 			}
-		case upcloud.IPAddressAccessUtility, upcloud.IPAddressAccessPrivate:
-			if internal == "" {
-				internal = ip.Address
+		case upcloud.IPAddressAccessPrivate:
+			if private == "" {
+				private = ip.Address
+			}
+		case upcloud.IPAddressAccessUtility:
+			if utility == "" {
+				utility = ip.Address
 			}
 		}
+	}
+	if private != "" {
+		internal = private
+	} else {
+		internal = utility
 	}
 	return external, internal
 }
