@@ -53,6 +53,18 @@ UpCloud servers and reports their connection info. UpCloud Server API base: `htt
 (use the official `upcloud-go-api` SDK). Read the UpCloud API token from the **environment / credentials**
 — never from config files or source.
 
+### Networking contract (reachability)
+- **Configured networking MUST be attached to created servers, not merely validated.** When a
+  private/SDN network (or utility/public selection) is configured, `Increase`/create MUST add it as an
+  explicit network interface on the create request. A server that validates config but is created with
+  only the default interfaces never joins the configured network and is undialable — provisioning
+  succeeding is **not** the same as the job being able to run.
+- **Dial addresses are derived from the server's network interfaces, classified by interface TYPE**, not
+  from the flattened top-level `ip_addresses` list. A private-cloud-network IP is absent from that list
+  and is exposed only under a private-type interface whose IP `access` field is empty, so classifying by
+  `access` misses it. `ConnectInfo`'s internal (dial) address **prefers the private/SDN interface**, with
+  utility as a fallback; the external address comes from the public interface.
+
 ## Security invariants — non-negotiable
 - API token from env/credentials only; never in `config.toml`, never logged, never committed.
 - Fail-closed: missing/empty token → hard error at construction, not a silent default.
