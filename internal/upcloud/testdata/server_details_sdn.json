@@ -1,0 +1,49 @@
+{
+  "_comment": "Golden fixture: the ServerDetails JSON shape UpCloud returns for a VM attached to an SDN/private network. The top-level ip_addresses list is EMPTY (private-cloud-network IPs are not aggregated there); the SDN address appears ONLY under a private-type interface and carries an EMPTY access field. Utility and public interfaces are present too. All addresses are synthetic (RFC5737 TEST-NET-3 / RFC1918).",
+  "server": {
+    "uuid": "00000000-0000-4000-8000-000000000001",
+    "title": "runner-example",
+    "hostname": "runner-example",
+    "state": "started",
+    "zone": "zone-example",
+    "ip_addresses": {
+      "ip_address": []
+    },
+    "networking": {
+      "interfaces": {
+        "interface": [
+          {
+            "index": 1,
+            "type": "public",
+            "network": "00000000-0000-4000-8000-0000000000aa",
+            "ip_addresses": {
+              "ip_address": [
+                { "family": "IPv4", "access": "public", "address": "203.0.113.10" }
+              ]
+            }
+          },
+          {
+            "index": 2,
+            "type": "utility",
+            "network": "00000000-0000-4000-8000-0000000000bb",
+            "ip_addresses": {
+              "ip_address": [
+                { "family": "IPv4", "access": "utility", "address": "10.11.0.5" }
+              ]
+            }
+          },
+          {
+            "index": 3,
+            "type": "private",
+            "network": "00000000-0000-4000-8000-0000000000cc",
+            "ip_addresses": {
+              "ip_address": [
+                { "family": "IPv4", "access": "", "address": "10.10.0.5" }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
