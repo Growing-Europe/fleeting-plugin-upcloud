@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`ConnectInfo` sets the dial port explicitly.** The reported connection info now
+  resolves the dial port (the configured `connector_config` port, else 22) instead
+  of leaving it `0` and relying on the connector framework's default. This keeps the
+  dialed port consistent with the port the readiness gate probes and avoids
+  depending on undocumented default behavior.
 - **Network-readiness gate on `StateRunning`.** A server is reported ready
   (`StateRunning`) only once its SSH port is reachable on the dial address;
   until then it stays `StateCreating`. UpCloud's `started` power state precedes

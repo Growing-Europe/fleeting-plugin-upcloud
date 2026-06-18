@@ -175,6 +175,11 @@ func (g *InstanceGroup) ConnectInfo(ctx context.Context, instance string) (provi
 	info.ID = srv.UUID
 	info.ExternalAddr = srv.ExternalIP
 	info.InternalAddr = srv.InternalIP
+	// Set the dial port the connector uses. ConnectorConfig.ProtocolPort is 0 when
+	// the operator omits it, which makes the connector dial "<ip>:0" and time out.
+	// Resolve it the SAME way the readiness probe does (sshPort: configured port
+	// else 22) so a server probed-ready on a port is also DIALED on that port.
+	info.ProtocolPort = g.sshPort()
 	return info, nil
 }
 
