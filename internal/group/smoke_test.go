@@ -32,12 +32,18 @@ func TestSmoke_RealAPI(t *testing.T) {
 	if os.Getenv("UPCLOUD_TOKEN") == "" {
 		t.Fatal("UPCLOUD_SMOKE=1 requires UPCLOUD_TOKEN")
 	}
+	// Required with no default: a template UUID is account/region-specific, so the
+	// operator supplies a stock OS template UUID rather than baking one into source.
+	template := os.Getenv("UPCLOUD_SMOKE_TEMPLATE")
+	if template == "" {
+		t.Skip("UPCLOUD_SMOKE_TEMPLATE (a bootable OS template UUID) is required")
+	}
 
 	const label = "fpu-smoke"
 	g := &group.InstanceGroup{Config: config.Config{
 		Zone:           envOr("UPCLOUD_SMOKE_ZONE", "de-fra1"),
 		Plan:           envOr("UPCLOUD_SMOKE_PLAN", "1xCPU-1GB"),
-		Template:       envOr("UPCLOUD_SMOKE_TEMPLATE", "01000000-0000-4000-8000-000030240200"),
+		Template:       template,
 		HostnamePrefix: label,
 		StorageSizeGB:  25,
 		MaxInstances:   1,

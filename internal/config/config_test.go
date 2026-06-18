@@ -10,7 +10,7 @@ import (
 const validTOML = `
 zone            = "de-fra1"
 plan            = "1xCPU-1GB"
-template        = "01000000-0000-4000-8000-000030240200"
+template        = "00000000-0000-4000-8000-000000000010"
 hostname_prefix = "fleeting"
 storage_size_gb = 25
 max_instances   = 10
