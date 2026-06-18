@@ -2,6 +2,10 @@ module github.com/Growing-Europe/fleeting-plugin-upcloud
 
 go 1.26.0
 
+// v0.1.0's release pipeline produced no signed artifacts (a broken cosign config);
+// it is superseded by v0.1.1 and later. Retracting steers `go get` away from it.
+retract v0.1.0
+
 require github.com/UpCloudLtd/upcloud-go-api/v8 v8.38.0
 
 require pgregory.net/rapid v1.3.0
