@@ -46,7 +46,11 @@ sboms:
 # fixes it. Validated against the exact CI binary (cosign v3.0.6, pinned in
 # release.yml), where --new-bundle-format defaults to true so --bundle emits a
 # v0.3 Sigstore bundle (application/vnd.dev.sigstore.bundle.v0.3+json).
-# Verify: cosign verify-blob --bundle checksums.txt.sigstore.json --new-bundle-format checksums.txt
+# Verify (keyless verification MUST pin the signing identity, else it only proves
+# *something* signed, not *who* — replace v0.1.1 with the tag you downloaded):
+#   cosign verify-blob --bundle checksums.txt.sigstore.json \
+#     --certificate-identity 'https://github.com/Growing-Europe/fleeting-plugin-upcloud/.github/workflows/release.yml@refs/tags/v0.1.1' \
+#     --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' checksums.txt
 signs:
   - cmd: cosign
     signature: "${artifact}.sigstore.json"
