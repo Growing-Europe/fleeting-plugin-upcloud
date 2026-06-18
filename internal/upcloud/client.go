@@ -76,7 +76,7 @@ type Server struct {
 	// Connection addresses (populated by Get / Create / WaitForState, which
 	// return full details; ListByLabel items do not carry them).
 	ExternalIP string // first public IPv4, for external connections
-	InternalIP string // first utility/private IPv4, for in-network connections
+	InternalIP string // in-network dial address: PRIVATE/SDN IPv4 preferred, utility only as fallback
 }
 
 // ServerSpec describes a server to create. All values are configuration —
@@ -91,4 +91,14 @@ type ServerSpec struct {
 	Labels        map[string]string
 	SSHKeys       []string
 	UserData      string
+
+	// Networking. At least one must be set or the created server is created
+	// with UpCloud's DEFAULT interfaces (public + utility) and is NOT attached
+	// to the configured private SDN — leaving it unreachable from a manager that
+	// reaches the fleet only over the SDN's IPsec tunnel (the dial hangs forever).
+	// See Create(): these drive the explicit request.Networking interfaces.
+	Network        string // private SDN network UUID (attaches a private interface)
+	UtilityNetwork bool   // attach a utility-network interface
+	PublicIPv4     bool   // attach a public IPv4 interface
+	PublicIPv6     bool   // attach a public IPv6 interface
 }

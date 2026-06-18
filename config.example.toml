@@ -28,7 +28,11 @@ check_interval = 0
       zone            = "de-fra1"                  # UpCloud zone
       plan            = "2xCPU-4GB"                # UpCloud server plan
       template        = "REPLACE_WITH_TEMPLATE_UUID"
-      network         = ""                         # optional: SDN/private network UUID
+      # Networking — configure at least one reachable path to the runner VMs.
+      network         = ""                         # SDN/private network UUID to attach (preferred dial target)
+      utility_network = false                      # attach the zone's utility (SDN-backed private) network
+      public_ipv4     = false                      # assign a public IPv4 (use when there is no private/SDN reachability)
+      public_ipv6     = false                      # assign a public IPv6
       hostname_prefix = "fleeting"
       storage_size_gb = 25
 

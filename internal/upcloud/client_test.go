@@ -153,6 +153,80 @@ func TestCreate_BuildsRequestAndMaps(t *testing.T) {
 	}
 }
 
+// TestCreate_AttachesConfiguredNetworking is the reachability regression guard.
+// A server with a configured private SDN MUST be created with an explicit
+// private interface on that network. Without it UpCloud attaches only the
+// default interfaces (public + utility) and the instance never joins the SDN —
+// so a manager that reaches the fleet only over the SDN's IPsec tunnel can never
+// dial it (the docker-autoscaler connector hangs on the unreachable address and
+// the job system-fails in prepare). This test FAILS on the pre-fix code (no
+// Networking block) and passes once Create() attaches the interfaces.
+func TestCreate_AttachesConfiguredNetworking(t *testing.T) {
+	f := &fakeAPI{createResp: detailsWith("u", "maintenance")}
+	c := newWithAPI(f)
+
+	if _, err := c.Create(context.Background(), ServerSpec{
+		Title: "srv", Hostname: "srv", Zone: "z1", Plan: "1xCPU-1GB",
+		Template: "tmpl-uuid", StorageSizeGB: 25,
+		Network: "sdn-uuid", UtilityNetwork: true,
+	}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	r := f.createReq
+	if r.Networking == nil {
+		t.Fatal("CreateServerRequest.Networking is nil — server would get DEFAULT interfaces (public+utility), not the configured SDN; this is the fleet-wide dial-hang regression")
+	}
+	var hasPrivate, hasUtility bool
+	for _, i := range r.Networking.Interfaces {
+		if i.Type == upcloud.NetworkTypePrivate && i.Network == "sdn-uuid" {
+			hasPrivate = true
+			if len(i.IPAddresses) == 0 || i.IPAddresses[0].Family != upcloud.IPAddressFamilyIPv4 {
+				t.Errorf("private SDN interface missing IPv4 address request: %+v", i)
+			}
+		}
+		if i.Type == upcloud.NetworkTypeUtility {
+			hasUtility = true
+		}
+	}
+	if !hasPrivate {
+		t.Error("no private interface attached to the configured SDN network 'sdn-uuid' — server unreachable over the tunnel")
+	}
+	if !hasUtility {
+		t.Error("utility_network=true but no utility interface attached")
+	}
+}
+
+// TestPickIPs_PrefersPrivateOverUtility is the dial-SELECTION guard (distinct
+// from the attach guard). The manager reaches the fleet ONLY over the private
+// SDN, so srv.InternalIP — what the connector dials — MUST be the private/SDN
+// address whenever one exists, regardless of UpCloud's (undocumented) address
+// ordering. The WRONG candidate (utility, unreachable) is deliberately listed
+// FIRST: pre-fix pickIPs (first utility-or-private wins) returns the utility IP
+// and this FAILS; with the private-preference it returns the SDN IP and passes.
+func TestPickIPs_PrefersPrivateOverUtility(t *testing.T) {
+	// utility deliberately FIRST, private SECOND — the ordering that broke it.
+	addrs := upcloud.IPAddressSlice{
+		{Access: upcloud.IPAddressAccessUtility, Family: upcloud.IPAddressFamilyIPv4, Address: "10.5.4.41"},
+		{Access: upcloud.IPAddressAccessPrivate, Family: upcloud.IPAddressFamilyIPv4, Address: "10.20.0.2"},
+		{Access: upcloud.IPAddressAccessPublic, Family: upcloud.IPAddressFamilyIPv4, Address: "85.9.208.57"},
+	}
+	external, internal := pickIPs(addrs)
+	if internal != "10.20.0.2" {
+		t.Errorf("internal must be the PRIVATE/SDN address (10.20.0.2), got %q — connector would dial the unreachable utility IP and hang", internal)
+	}
+	if external != "85.9.208.57" {
+		t.Errorf("external must be the public address, got %q", external)
+	}
+
+	// Fallback: with NO private address, internal falls back to utility.
+	fb := upcloud.IPAddressSlice{
+		{Access: upcloud.IPAddressAccessUtility, Family: upcloud.IPAddressFamilyIPv4, Address: "10.5.9.9"},
+	}
+	if _, internal := pickIPs(fb); internal != "10.5.9.9" {
+		t.Errorf("with no private address, internal must fall back to utility, got %q", internal)
+	}
+}
+
 func TestCreate_NoLoginUserWhenNoKeysOrUserData(t *testing.T) {
 	f := &fakeAPI{createResp: detailsWith("u", "started")}
 	c := newWithAPI(f)
