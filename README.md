@@ -118,6 +118,12 @@ The plugin implements the fleeting provider interface (`Init` / `Update` / `Incr
 UpCloud servers and reports their connection info. With `max_use_count = 1`, every server runs exactly
 one job and is then destroyed.
 
+Configured networking is **attached** to each server at create time, so the instance actually joins the
+network it is meant to be reached on. The dial address reported by `ConnectInfo` is derived from the
+server's network interfaces by interface *type* — preferring the private/SDN interface for the internal
+address (a private-cloud-network IP is not present in the flattened top-level address list), and the
+public interface for the external address.
+
 ## Development
 
 ```sh
