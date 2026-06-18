@@ -215,7 +215,7 @@ func (g *InstanceGroup) buildSpec() upcloud.ServerSpec {
 		SSHKeys:       g.SSHKeys,
 		UserData:      g.userData,
 		// Reachability: propagate the configured networking so the server is
-		// attached to the SDN (g.Network) the manager dials over its tunnel.
+		// attached to the SDN (g.Network) the manager dials over the private network.
 		// Omitting this is what left the fleet utility-only and undialable.
 		Network:        g.Network,
 		UtilityNetwork: g.UtilityNetwork,
