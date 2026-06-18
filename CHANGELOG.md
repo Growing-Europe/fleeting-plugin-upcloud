@@ -5,7 +5,43 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.2] — unreleased
+## [0.2.0] — unreleased
+
+### Added
+
+- **Bounded retry with exponential backoff on transient UpCloud API errors**
+  (HTTP 429/5xx, network timeouts) for the create/list/get/stop/delete calls,
+  honoring context cancellation (no retry past a cancelled context or deadline).
+- **Idempotent server creation under retry.** A retried create reconciles by the
+  unique per-instance name and adopts an already-created server instead of
+  provisioning a duplicate, so a create the API accepted but failed to acknowledge
+  is never orphaned.
+- `docs/API.md` documenting the stable v0.2 configuration/behavior contract that is
+  kept backward-compatible within the `v0.2.x` series.
+
+### Changed
+
+- The networking keys `network` / `utility_network` / `public_ipv4` / `public_ipv6`
+  are the finalized v0.2 reachability contract.
+- `Suspend` / `Resume` remain documented no-ops: these are single-use VMs
+  (`max_use_count = 1`) that the autoscaler never suspends, and UpCloud stop-billing
+  is plan-dependent (attached storage and public IPs bill regardless of power state)
+  — so suspending instead of destroying has no benefit in this model.
+
+### Removed
+
+- **`floating_ip` config key** — it was declared but never implemented (a silent
+  no-op). See *Migration* below.
+
+### Migration (v0.1.x → v0.2.0)
+
+- **Remove `floating_ip` from `plugin_config` if you set it.** It never had any
+  effect; with strict config decoding, leaving it present now fails to parse rather
+  than being silently ignored.
+- No other configuration changes are required — the networking keys and all other
+  keys are unchanged and backward-compatible.
+
+## [0.1.2] — 2026-06-18
 
 ### Fixed
 
