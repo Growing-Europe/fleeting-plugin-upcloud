@@ -227,6 +227,46 @@ func TestPickIPs_PrefersPrivateOverUtility(t *testing.T) {
 	}
 }
 
+// TestServerFromDetails_DerivesSDNInternalIPFromInterface is the SDN dial guard.
+// Models the UpCloud ServerDetails shape for an SDN-attached VM: the top-level ip_addresses list is
+// EMPTY (UpCloud does not aggregate private-cloud-network IPs there) and the SDN IP appears ONLY under
+// a private-type interface with an EMPTY Access field. So deriving InternalIP from the top-level list
+// (or classifying by IP Access) yields "" -> the connector dials an empty address and hangs.
+// InternalIP MUST be derived from the interfaces, classified by interface TYPE, preferring the
+// private/SDN interface. RED pre-fix (serverFromDetails used pickIPs(top-level)=empty -> "").
+func TestServerFromDetails_DerivesSDNInternalIPFromInterface(t *testing.T) {
+	d := &upcloud.ServerDetails{}
+	d.UUID = "sdn-vm"
+	d.State = "started"
+	// Top-level flattened list is EMPTY for an SDN-only VM (the real shape).
+	d.IPAddresses = upcloud.IPAddressSlice{}
+	// The SDN IP lives ONLY under the interface, with an EMPTY Access field; utility listed too.
+	d.Networking = upcloud.ServerNetworking{Interfaces: upcloud.ServerInterfaceSlice{
+		{Type: upcloud.NetworkTypeUtility, IPAddresses: upcloud.IPAddressSlice{
+			{Family: upcloud.IPAddressFamilyIPv4, Access: "utility", Address: "10.5.0.9"},
+		}},
+		{Type: upcloud.NetworkTypePrivate, IPAddresses: upcloud.IPAddressSlice{
+			{Family: upcloud.IPAddressFamilyIPv4, Access: "", Address: "10.20.0.2"},
+		}},
+	}}
+	s := serverFromDetails(d)
+	if s.InternalIP != "10.20.0.2" {
+		t.Errorf("InternalIP must be the SDN/private interface addr 10.20.0.2 (derived from interfaces, private-preferred), got %q — the connector would dial an empty/utility address and hang", s.InternalIP)
+	}
+
+	// Public-only interface -> external set; private absent -> internal falls back to utility.
+	d2 := &upcloud.ServerDetails{}
+	d2.IPAddresses = upcloud.IPAddressSlice{}
+	d2.Networking = upcloud.ServerNetworking{Interfaces: upcloud.ServerInterfaceSlice{
+		{Type: upcloud.NetworkTypePublic, IPAddresses: upcloud.IPAddressSlice{{Family: upcloud.IPAddressFamilyIPv4, Access: "public", Address: "94.0.0.1"}}},
+		{Type: upcloud.NetworkTypeUtility, IPAddresses: upcloud.IPAddressSlice{{Family: upcloud.IPAddressFamilyIPv4, Access: "utility", Address: "10.5.0.9"}}},
+	}}
+	s2 := serverFromDetails(d2)
+	if s2.ExternalIP != "94.0.0.1" || s2.InternalIP != "10.5.0.9" {
+		t.Errorf("expected external=94.0.0.1 internal(utility-fallback)=10.5.0.9, got external=%q internal=%q", s2.ExternalIP, s2.InternalIP)
+	}
+}
+
 func TestCreate_NoLoginUserWhenNoKeysOrUserData(t *testing.T) {
 	f := &fakeAPI{createResp: detailsWith("u", "started")}
 	c := newWithAPI(f)

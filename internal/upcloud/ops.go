@@ -206,8 +206,55 @@ func labelsToMap(ls upcloud.LabelSlice) map[string]string {
 func serverFromDetails(d *upcloud.ServerDetails) *Server {
 	s := serverFromServer(&d.Server)
 	s.Labels = labelsToMap(d.Labels)
-	s.ExternalIP, s.InternalIP = pickIPs(d.IPAddresses)
+	// Derive the dial addresses from the INTERFACES, not the top-level
+	// ServerDetails.IPAddresses: UpCloud does NOT aggregate SDN/private-cloud-network
+	// IPs into the flattened top-level list (it is empty for an SDN-only VM), and an
+	// SDN interface IP carries an empty Access field — so classifying by the IP's
+	// Access (as pickIPs does) misses it entirely and leaves InternalIP empty, which
+	// makes the connector dial an empty address and hang. Classify by interface TYPE.
+	s.ExternalIP, s.InternalIP = pickIPsFromInterfaces(d.Networking)
+	// Defensive fallback to the flattened list for any response shape where the
+	// interface networking is absent but the top-level list is populated.
+	if s.ExternalIP == "" && s.InternalIP == "" {
+		s.ExternalIP, s.InternalIP = pickIPs(d.IPAddresses)
+	}
 	return &s
+}
+
+// pickIPsFromInterfaces selects the external (public) and internal (dial) IPv4
+// from the server's network INTERFACES, classifying by interface Type (the
+// reliable signal — an SDN/private interface's IP Access is empty). Internal
+// PREFERS the private/SDN address (the manager reaches the fleet only over the
+// SDN tunnel); utility is a fallback only when no private interface is attached.
+func pickIPsFromInterfaces(n upcloud.ServerNetworking) (external, internal string) {
+	var private, utility string
+	for _, iface := range n.Interfaces {
+		for _, ip := range iface.IPAddresses {
+			if ip.Family != upcloud.IPAddressFamilyIPv4 {
+				continue
+			}
+			switch iface.Type {
+			case upcloud.NetworkTypePublic:
+				if external == "" {
+					external = ip.Address
+				}
+			case upcloud.NetworkTypePrivate:
+				if private == "" {
+					private = ip.Address
+				}
+			case upcloud.NetworkTypeUtility:
+				if utility == "" {
+					utility = ip.Address
+				}
+			}
+		}
+	}
+	if private != "" {
+		internal = private
+	} else {
+		internal = utility
+	}
+	return external, internal
 }
 
 // pickIPs selects the first public IPv4 (external) and the internal IPv4 the
