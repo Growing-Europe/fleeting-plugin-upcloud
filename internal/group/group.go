@@ -60,6 +60,11 @@ type InstanceGroup struct {
 	settings provider.Settings
 	scope    string // group label value (hostname_prefix)
 	userData string // resolved cloud-init user-data (inline or from file)
+
+	// dialProbe reports TCP reachability of an address (nil = reachable). It gates
+	// the "started"->StateRunning transition on SSH-port readiness. Defaulted in
+	// Init to a bounded TCP connect; injectable so tests cover the gate offline.
+	dialProbe func(ctx context.Context, addr string) error
 }
 
 // compile-time assertion that we satisfy the full (drift-checked) interface.

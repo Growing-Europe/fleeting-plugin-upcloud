@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.0] — unreleased
 
+### Fixed
+
+- **Network-readiness gate on `StateRunning`.** A server is reported ready
+  (`StateRunning`) only once its SSH port is reachable on the dial address;
+  until then it stays `StateCreating`. UpCloud's `started` power state precedes
+  network readiness by some seconds (the address is not yet configured and sshd
+  not yet listening), so reporting ready immediately made the autoscaler dial into
+  a black hole and the job fail in *preparing environment*. The probe is bounded
+  and never blocks the reconcile. A never-reachable server stays `Creating` and is
+  reaped by the autoscaler's instance creation/readiness timeout — set a sane one
+  (see [docs/API.md](docs/API.md#3-provider-behavior)).
+
 ### Added
 
 - **Bounded retry with exponential backoff on transient UpCloud API errors**

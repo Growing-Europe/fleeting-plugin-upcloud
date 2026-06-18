@@ -54,6 +54,19 @@ interface; the internal (dial) address is derived from the server's network inte
 classified by interface *type*, preferring the private/SDN interface (a private-cloud
 address is not present in the flattened top-level address list), falling back to utility.
 
+**Readiness gate (`StateRunning`):** a server is reported `Running` only once its SSH port is
+reachable on the dial address; until then it is reported `Creating`. This prevents the autoscaler
+from dialing during the window after UpCloud reports the server `started` but before its network is
+configured and `sshd` is listening.
+
+> **Operational dependency — set an autoscaler instance creation/readiness timeout.** Because the
+> plugin reports `Creating` until the dial port is reachable, a server that never becomes reachable
+> (e.g. a broken image) stays `Creating` indefinitely from the plugin's side — the plugin does **not**
+> unilaterally delete an instance the autoscaler is still waiting on. Such an instance is reaped only
+> when the **GitLab Runner autoscaler's** instance creation/readiness timeout expires and asks the
+> plugin to remove it (the plugin then deletes the server **and** its storage). Operators **must**
+> configure a sane creation timeout, or a never-ready server could bill until removed manually.
+
 ## 4. Environment
 
 The UpCloud API token is read from the environment (`UPCLOUD_TOKEN`, a `ucat_` bearer

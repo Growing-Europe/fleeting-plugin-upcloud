@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/hashicorp/go-hclog"
 	"gitlab.com/gitlab-org/fleeting/fleeting/provider"
@@ -20,6 +21,9 @@ var Version = "dev"
 func (g *InstanceGroup) Init(_ context.Context, log hclog.Logger, settings provider.Settings) (provider.ProviderInfo, error) {
 	g.log = log
 	g.settings = settings
+	if g.dialProbe == nil {
+		g.dialProbe = tcpProbe
+	}
 
 	if err := g.Validate(); err != nil {
 		return provider.ProviderInfo{}, err
@@ -66,8 +70,30 @@ func (g *InstanceGroup) Update(ctx context.Context, fn func(instance string, sta
 	if err != nil {
 		return fmt.Errorf("update: list owned: %w", err)
 	}
+	// Resolve each server's state. Non-"started" power states map directly. A
+	// "started" server is gated on SSH-port readiness (startedState) — probed with
+	// bounded concurrency so a fleet of freshly-started servers does not serialize
+	// behind the per-probe timeout. States are collected, then reported via fn
+	// serially (fn is the caller's callback; we do not assume it is concurrency-safe).
+	states := make([]provider.State, len(servers))
+	sem := make(chan struct{}, maxConcurrentProbes)
+	var wg sync.WaitGroup
 	for i := range servers {
-		fn(servers[i].UUID, mapState(servers[i].State))
+		if servers[i].State != "started" {
+			states[i] = mapState(servers[i].State)
+			continue
+		}
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(i int) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			states[i] = g.startedState(ctx, servers[i].UUID)
+		}(i)
+	}
+	wg.Wait()
+	for i := range servers {
+		fn(servers[i].UUID, states[i])
 	}
 	return nil
 }

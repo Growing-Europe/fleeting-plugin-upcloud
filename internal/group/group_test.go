@@ -254,7 +254,11 @@ func TestUpdate_ReconcilesFromLabelList(t *testing.T) {
 		{UUID: "b", State: "maintenance"},
 		{UUID: "c", State: "stopped"},
 	}}
+	// "started" is gated on SSH-port readiness: Get resolves the dial IP and the
+	// probe must succeed for StateRunning. Make the started server reachable here.
+	f.getResult = &upcloud.Server{UUID: "a", State: "started", InternalIP: "10.20.0.2"}
 	g := New(cfg(), f)
+	g.dialProbe = func(context.Context, string) error { return nil } // reachable
 	got := map[string]provider.State{}
 	if err := g.Update(context.Background(), func(id string, s provider.State) { got[id] = s }); err != nil {
 		t.Fatal(err)
