@@ -40,6 +40,10 @@ gofmt -l .        # MUST print nothing
 - [ ] Public strings (README, `config.example.toml`) use generic placeholders, never real values.
 
 ## Architecture / contract
+The consumer-facing stable surface (config keys, connector config, provider behavior,
+environment) is the backward-compatibility contract documented in [docs/API.md](docs/API.md);
+keep it stable within a minor series.
+
 Implement the fleeting provider interface (`provider.InstanceGroup`) — the live
 interface is **9 methods**:
 `Init` · `Update` · `Increase` · `Decrease` · `ConnectInfo` · `Heartbeat` ·

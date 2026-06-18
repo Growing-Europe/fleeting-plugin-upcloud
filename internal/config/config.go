@@ -42,7 +42,6 @@ type Config struct {
 	UtilityNetwork bool   `toml:"utility_network" json:"utility_network,omitempty"`
 	PublicIPv4     bool   `toml:"public_ipv4" json:"public_ipv4,omitempty"`
 	PublicIPv6     bool   `toml:"public_ipv6" json:"public_ipv6,omitempty"`
-	FloatingIP     string `toml:"floating_ip" json:"floating_ip,omitempty"`
 
 	// Provisioning.
 	SSHKeys      []string `toml:"ssh_keys" json:"ssh_keys,omitempty"`
