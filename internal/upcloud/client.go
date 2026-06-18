@@ -35,7 +35,8 @@ type serverAPI interface {
 
 // Client is the provider-generic UpCloud client used by the plugin.
 type Client struct {
-	api serverAPI
+	api   serverAPI
+	retry retryPolicy
 }
 
 // ErrNoToken is returned when no UpCloud API token is available in the
@@ -55,11 +56,11 @@ func New(opts ...client.ConfigFn) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("upcloud: build client: %w", err)
 	}
-	return &Client{api: service.New(c)}, nil
+	return &Client{api: service.New(c), retry: defaultRetryPolicy()}, nil
 }
 
 // newWithAPI is used by tests to inject a fake or an httptest-backed service.
-func newWithAPI(api serverAPI) *Client { return &Client{api: api} }
+func newWithAPI(api serverAPI) *Client { return &Client{api: api, retry: defaultRetryPolicy()} }
 
 // HTTPClient is a convenience for wiring a custom *http.Client (tests, cassette
 // replay) into New via the SDK's WithHTTPClient.

@@ -50,11 +50,52 @@ func (c *Client) Create(ctx context.Context, spec ServerSpec) (*Server, error) {
 	if ifaces := networkInterfaces(spec); len(ifaces) > 0 {
 		req.Networking = &request.CreateServerNetworking{Interfaces: ifaces}
 	}
-	details, err := c.api.CreateServer(ctx, req)
+	var details *upcloud.ServerDetails
+	attempt := 0
+	_, err := withRetry(ctx, c.retry, func() (struct{}, error) {
+		attempt++
+		if attempt > 1 {
+			// A previous attempt may have created the server before the transient
+			// failure surfaced (e.g. a timeout after the API accepted the request).
+			// Reconcile by the unique title before re-creating, so a retried create
+			// adopts the existing server instead of orphaning a duplicate.
+			if adopted, ferr := c.findByLabelsAndTitle(ctx, spec.Labels, spec.Title); ferr == nil && adopted != nil {
+				details = adopted
+				return struct{}{}, nil
+			}
+		}
+		d, cerr := c.api.CreateServer(ctx, req)
+		if cerr != nil {
+			return struct{}{}, cerr
+		}
+		details = d
+		return struct{}{}, nil
+	})
 	if err != nil {
 		return nil, fmt.Errorf("upcloud: create server %q: %w", spec.Title, err)
 	}
 	return serverFromDetails(details), nil
+}
+
+// findByLabelsAndTitle looks for an existing server carrying ALL of labels with
+// the given (unique) title and returns its full details, or (nil, nil) if none
+// matches. It is the idempotency probe for a retried Create: the per-instance
+// title is unique, so a match means a prior attempt already succeeded.
+func (c *Client) findByLabelsAndTitle(ctx context.Context, labels map[string]string, title string) (*upcloud.ServerDetails, error) {
+	filters := make([]request.QueryFilter, 0, len(labels))
+	for k, v := range labels {
+		filters = append(filters, request.FilterLabel{Label: upcloud.Label{Key: k, Value: v}})
+	}
+	resp, err := c.api.GetServersWithFilters(ctx, &request.GetServersWithFiltersRequest{Filters: filters})
+	if err != nil {
+		return nil, err
+	}
+	for i := range resp.Servers {
+		if resp.Servers[i].Title == title {
+			return c.api.GetServerDetails(ctx, &request.GetServerDetailsRequest{UUID: resp.Servers[i].UUID})
+		}
+	}
+	return nil, nil
 }
 
 // networkInterfaces translates the spec's networking selection into explicit
@@ -95,10 +136,12 @@ func networkInterfaces(spec ServerSpec) request.CreateServerInterfaceSlice {
 // ListByLabel returns every server carrying the given label key=value. This is
 // the discovery mechanism for the synthetic, label-based instance group.
 func (c *Client) ListByLabel(ctx context.Context, key, value string) ([]Server, error) {
-	resp, err := c.api.GetServersWithFilters(ctx, &request.GetServersWithFiltersRequest{
-		Filters: []request.QueryFilter{
-			request.FilterLabel{Label: upcloud.Label{Key: key, Value: value}},
-		},
+	resp, err := withRetry(ctx, c.retry, func() (*upcloud.Servers, error) {
+		return c.api.GetServersWithFilters(ctx, &request.GetServersWithFiltersRequest{
+			Filters: []request.QueryFilter{
+				request.FilterLabel{Label: upcloud.Label{Key: key, Value: value}},
+			},
+		})
 	})
 	if err != nil {
 		return nil, fmt.Errorf("upcloud: list servers by label %s=%s: %w", key, value, err)
@@ -112,10 +155,13 @@ func (c *Client) ListByLabel(ctx context.Context, key, value string) ([]Server, 
 
 // Stop requests a hard stop and is a precondition for deletion.
 func (c *Client) Stop(ctx context.Context, uuid string, timeout time.Duration) error {
-	if _, err := c.api.StopServer(ctx, &request.StopServerRequest{
-		UUID:     uuid,
-		StopType: request.ServerStopTypeHard,
-		Timeout:  timeout,
+	if err := retryErr(ctx, c.retry, func() error {
+		_, e := c.api.StopServer(ctx, &request.StopServerRequest{
+			UUID:     uuid,
+			StopType: request.ServerStopTypeHard,
+			Timeout:  timeout,
+		})
+		return e
 	}); err != nil {
 		return fmt.Errorf("upcloud: stop server %s: %w", uuid, err)
 	}
@@ -123,6 +169,12 @@ func (c *Client) Stop(ctx context.Context, uuid string, timeout time.Duration) e
 }
 
 // WaitForState blocks until the server reaches desiredState or ctx is done.
+//
+// This is deliberately NOT wrapped in withRetry: WaitForServerState already
+// polls internally until the state is reached or its deadline, so retrying it
+// would restart the wait rather than ride out a blip. The transient-error
+// resilience lives on the surrounding mutating calls (Stop, Delete), which is
+// the "wrap the Stop->Wait->Delete sequence, do not replace the wait" intent.
 func (c *Client) WaitForState(ctx context.Context, uuid, desiredState string) (*Server, error) {
 	details, err := c.api.WaitForServerState(ctx, &request.WaitForServerStateRequest{
 		UUID:         uuid,
@@ -136,7 +188,9 @@ func (c *Client) WaitForState(ctx context.Context, uuid, desiredState string) (*
 
 // Get returns full details for one server, including connection IPs.
 func (c *Client) Get(ctx context.Context, uuid string) (*Server, error) {
-	details, err := c.api.GetServerDetails(ctx, &request.GetServerDetailsRequest{UUID: uuid})
+	details, err := withRetry(ctx, c.retry, func() (*upcloud.ServerDetails, error) {
+		return c.api.GetServerDetails(ctx, &request.GetServerDetailsRequest{UUID: uuid})
+	})
 	if err != nil {
 		return nil, fmt.Errorf("upcloud: get server %s: %w", uuid, err)
 	}
@@ -147,8 +201,10 @@ func (c *Client) Get(ctx context.Context, uuid string) (*Server, error) {
 // delete-with-storages call is mandatory: deleting only the server leaves the
 // cloned OS disk behind, which bills silently.
 func (c *Client) Delete(ctx context.Context, uuid string) error {
-	if err := c.api.DeleteServerAndStorages(ctx, &request.DeleteServerAndStoragesRequest{
-		UUID: uuid,
+	if err := retryErr(ctx, c.retry, func() error {
+		return c.api.DeleteServerAndStorages(ctx, &request.DeleteServerAndStoragesRequest{
+			UUID: uuid,
+		})
 	}); err != nil {
 		return fmt.Errorf("upcloud: delete server+storages %s: %w", uuid, err)
 	}
@@ -161,7 +217,9 @@ func (c *Client) Delete(ctx context.Context, uuid string) error {
 // BOTH Access and Type yields the invalid path /storage/public/template → 404.
 // We therefore filter by Type only and select public templates client-side.
 func (c *Client) PublicTemplates(ctx context.Context) ([]upcloud.Storage, error) {
-	resp, err := c.api.GetStorages(ctx, &request.GetStoragesRequest{Type: upcloud.StorageTypeTemplate})
+	resp, err := withRetry(ctx, c.retry, func() (*upcloud.Storages, error) {
+		return c.api.GetStorages(ctx, &request.GetStoragesRequest{Type: upcloud.StorageTypeTemplate})
+	})
 	if err != nil {
 		return nil, fmt.Errorf("upcloud: list templates: %w", err)
 	}
