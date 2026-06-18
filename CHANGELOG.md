@@ -30,6 +30,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A golden `ServerDetails` test fixture and interface-type table tests that pin the
   dial-address derivation (private-preferred internal, utility fallback,
   public → external, IPv6 ignored, empty-interfaces fallback to the flat list).
+- A real-execution smoke gate (opt-in, billable, skipped in CI) that, after
+  provisioning, dials the address `ConnectInfo` reports over SSH and runs a command
+  before destroying the server — asserting that *provisioning* a server is not
+  mistaken for the job being *able to run* on it.
+- Documentation of the reachability contract (configured networking must be
+  attached; dial addresses derived from interfaces by type) and a `RELEASING.md`
+  covering the signed-release process and Go module immutability.
 
 ### Changed
 
