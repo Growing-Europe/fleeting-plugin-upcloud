@@ -157,7 +157,7 @@ func TestCreate_BuildsRequestAndMaps(t *testing.T) {
 // A server with a configured private SDN MUST be created with an explicit
 // private interface on that network. Without it UpCloud attaches only the
 // default interfaces (public + utility) and the instance never joins the SDN —
-// so a manager that reaches the fleet only over the SDN's IPsec tunnel can never
+// so a manager that reaches the fleet only over that private network can never
 // dial it (the docker-autoscaler connector hangs on the unreachable address and
 // the job system-fails in prepare). This test FAILS on the pre-fix code (no
 // Networking block) and passes once Create() attaches the interfaces.
@@ -189,7 +189,7 @@ func TestCreate_AttachesConfiguredNetworking(t *testing.T) {
 		}
 	}
 	if !hasPrivate {
-		t.Error("no private interface attached to the configured SDN network 'sdn-uuid' — server unreachable over the tunnel")
+		t.Error("no private interface attached to the configured SDN network 'sdn-uuid' — server unreachable over the private network")
 	}
 	if !hasUtility {
 		t.Error("utility_network=true but no utility interface attached")
@@ -208,13 +208,13 @@ func TestPickIPs_PrefersPrivateOverUtility(t *testing.T) {
 	addrs := upcloud.IPAddressSlice{
 		{Access: upcloud.IPAddressAccessUtility, Family: upcloud.IPAddressFamilyIPv4, Address: "10.5.4.41"},
 		{Access: upcloud.IPAddressAccessPrivate, Family: upcloud.IPAddressFamilyIPv4, Address: "10.20.0.2"},
-		{Access: upcloud.IPAddressAccessPublic, Family: upcloud.IPAddressFamilyIPv4, Address: "85.9.208.57"},
+		{Access: upcloud.IPAddressAccessPublic, Family: upcloud.IPAddressFamilyIPv4, Address: "203.0.113.57"},
 	}
 	external, internal := pickIPs(addrs)
 	if internal != "10.20.0.2" {
 		t.Errorf("internal must be the PRIVATE/SDN address (10.20.0.2), got %q — connector would dial the unreachable utility IP and hang", internal)
 	}
-	if external != "85.9.208.57" {
+	if external != "203.0.113.57" {
 		t.Errorf("external must be the public address, got %q", external)
 	}
 
@@ -258,12 +258,12 @@ func TestServerFromDetails_DerivesSDNInternalIPFromInterface(t *testing.T) {
 	d2 := &upcloud.ServerDetails{}
 	d2.IPAddresses = upcloud.IPAddressSlice{}
 	d2.Networking = upcloud.ServerNetworking{Interfaces: upcloud.ServerInterfaceSlice{
-		{Type: upcloud.NetworkTypePublic, IPAddresses: upcloud.IPAddressSlice{{Family: upcloud.IPAddressFamilyIPv4, Access: "public", Address: "94.0.0.1"}}},
+		{Type: upcloud.NetworkTypePublic, IPAddresses: upcloud.IPAddressSlice{{Family: upcloud.IPAddressFamilyIPv4, Access: "public", Address: "203.0.113.94"}}},
 		{Type: upcloud.NetworkTypeUtility, IPAddresses: upcloud.IPAddressSlice{{Family: upcloud.IPAddressFamilyIPv4, Access: "utility", Address: "10.5.0.9"}}},
 	}}
 	s2 := serverFromDetails(d2)
-	if s2.ExternalIP != "94.0.0.1" || s2.InternalIP != "10.5.0.9" {
-		t.Errorf("expected external=94.0.0.1 internal(utility-fallback)=10.5.0.9, got external=%q internal=%q", s2.ExternalIP, s2.InternalIP)
+	if s2.ExternalIP != "203.0.113.94" || s2.InternalIP != "10.5.0.9" {
+		t.Errorf("expected external=203.0.113.94 internal(utility-fallback)=10.5.0.9, got external=%q internal=%q", s2.ExternalIP, s2.InternalIP)
 	}
 }
 

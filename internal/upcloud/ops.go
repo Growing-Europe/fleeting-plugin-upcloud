@@ -44,7 +44,7 @@ func (c *Client) Create(ctx context.Context, spec ServerSpec) (*Server, error) {
 	}
 	// Attach the configured interfaces EXPLICITLY. Without a Networking block,
 	// UpCloud falls back to default interfaces (public + utility) and never joins
-	// the private SDN, so a manager reaching the fleet only over the SDN tunnel
+	// the private SDN, so a manager reaching the fleet only over the private network
 	// can never dial the instance (the connector hangs on the unreachable utility
 	// address). The private SDN interface is what makes the runner reachable.
 	if ifaces := networkInterfaces(spec); len(ifaces) > 0 {
@@ -100,8 +100,8 @@ func (c *Client) findByLabelsAndTitle(ctx context.Context, labels map[string]str
 
 // networkInterfaces translates the spec's networking selection into explicit
 // UpCloud create interfaces. The private SDN interface (when Network is set) is
-// the load-bearing one: it puts the server on the SDN the manager reaches over
-// its IPsec tunnel. Order is private, utility, public so the SDN/private address
+// the load-bearing one: it puts the server on the private network the manager
+// reaches it over. Order is private, utility, public so the SDN/private address
 // is the server's primary internal address.
 func networkInterfaces(spec ServerSpec) request.CreateServerInterfaceSlice {
 	var ifaces request.CreateServerInterfaceSlice
@@ -283,7 +283,7 @@ func serverFromDetails(d *upcloud.ServerDetails) *Server {
 // from the server's network INTERFACES, classifying by interface Type (the
 // reliable signal — an SDN/private interface's IP Access is empty). Internal
 // PREFERS the private/SDN address (the manager reaches the fleet only over the
-// SDN tunnel); utility is a fallback only when no private interface is attached.
+// private network); utility is a fallback only when no private interface is attached.
 func pickIPsFromInterfaces(n upcloud.ServerNetworking) (external, internal string) {
 	var private, utility string
 	for _, iface := range n.Interfaces {
@@ -317,7 +317,7 @@ func pickIPsFromInterfaces(n upcloud.ServerNetworking) (external, internal strin
 
 // pickIPs selects the first public IPv4 (external) and the internal IPv4 the
 // manager dials (internal). The manager reaches the fleet ONLY over the private
-// SDN (IPsec tunnel), so a PRIVATE address is PREFERRED for internal; utility is
+// network, so a PRIVATE address is PREFERRED for internal; utility is
 // only a fallback when no private address is attached. This preference is
 // independent of UpCloud's (undocumented) address ordering — a utility address
 // listed before a private one must NOT win, or the connector dials the
