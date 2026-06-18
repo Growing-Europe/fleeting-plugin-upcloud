@@ -10,12 +10,16 @@ provisions and autoscales [UpCloud](https://upcloud.com) cloud servers as epheme
 [Instance / Docker Autoscaler executor](https://docs.gitlab.com/runner/executors/docker_autoscaler/),
 the official successor to the deprecated `docker-machine` autoscaler.
 
-> **Status: early access — `v0.1.1` released.** The first signed release is published: keyless
-> [cosign](https://docs.sigstore.dev/)-signed artifacts with [SLSA](https://slsa.dev) build provenance
-> and SBOMs (see [Verifying releases](#verifying-releases)). The full create → connect → destroy
-> lifecycle has been exercised against a live UpCloud API. The plugin is **functional but early** —
-> interfaces and configuration may still change before `v1.0`, so evaluate carefully before relying on
-> it in production. Issues and stars welcome.
+> **Status: early access — `v0.1.2` released.** Releases are signed: keyless
+> [cosign](https://docs.sigstore.dev/) signatures with [SLSA](https://slsa.dev) build provenance and
+> SBOMs (see [Verifying releases](#verifying-releases)). The full create → connect → destroy lifecycle
+> has been exercised against a live UpCloud API. The plugin derives the dial address from the server's
+> network interfaces, preferring the private/SDN address (covered by unit and golden-fixture tests and
+> an opt-in real-execution smoke gate). The public configuration/behavior contract is documented in
+> [docs/API.md](docs/API.md) and kept backward-compatible within a minor series. The plugin is
+> **functional but early** — interfaces
+> may still evolve before `v1.0`, so evaluate carefully before relying on it in production. Issues and
+> stars welcome.
 
 ## Why
 
