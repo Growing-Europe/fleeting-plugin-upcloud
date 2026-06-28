@@ -35,6 +35,6 @@ require (
 )
 
 require (
-	go.yaml.in/yaml/v4 v4.0.0-rc.3 // indirect
-	gopkg.in/dnaeon/go-vcr.v4 v4.0.6
+	go.yaml.in/yaml/v4 v4.0.0-rc.6 // indirect
+	gopkg.in/dnaeon/go-vcr.v4 v4.0.7
 )
