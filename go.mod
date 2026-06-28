@@ -12,7 +12,7 @@ require pgregory.net/rapid v1.3.0
 
 require (
 	github.com/hashicorp/go-hclog v1.6.3
-	github.com/pelletier/go-toml/v2 v2.3.1
+	github.com/pelletier/go-toml/v2 v2.4.2
 	gitlab.com/gitlab-org/fleeting/fleeting v0.0.0-20260501120451-629e3db24357
 	golang.org/x/crypto v0.53.0
 )
