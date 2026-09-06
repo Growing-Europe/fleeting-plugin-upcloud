@@ -6,7 +6,7 @@ go 1.26.0
 // it is superseded by v0.1.1 and later. Retracting steers `go get` away from it.
 retract v0.1.0
 
-require github.com/UpCloudLtd/upcloud-go-api/v8 v8.38.0
+require github.com/UpCloudLtd/upcloud-go-api/v8 v8.41.0
 
 require pgregory.net/rapid v1.3.0
 
@@ -18,6 +18,7 @@ require (
 )
 
 require (
+	github.com/UpCloudLtd/httplog v0.0.0-20260624214043-23b0cab8e085 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/hashicorp/go-plugin v1.7.0 // indirect
